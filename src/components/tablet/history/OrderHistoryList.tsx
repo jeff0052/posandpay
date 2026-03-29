@@ -170,33 +170,32 @@ export const OrderHistoryList: React.FC<OrderHistoryListProps> = ({ orders, onCl
                       <button
                         key={order.id}
                         onClick={() => onSelect(order.id)}
-                        className="grid w-full grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-3 border-b border-border/70 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-accent/40 active:bg-accent"
+                        className="w-full border-b border-border/70 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-accent/40 active:bg-accent"
                       >
-                        <div className="text-[12px] font-mono text-muted-foreground">{timeLabel}</div>
-
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-[14px] font-bold text-foreground font-mono">${order.total.toFixed(2)}</span>
-                            <span className={cn("rounded-full px-2 py-1 text-[10px] font-semibold", serviceModeColors[order.serviceMode])}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[12px] font-mono text-muted-foreground">{timeLabel}</span>
+                            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", serviceModeColors[order.serviceMode])}>
                               {modeLabel}
                             </span>
                             {order.tableNumber ? (
-                              <span className="rounded-full bg-accent px-2 py-1 text-[10px] font-medium text-muted-foreground">
+                              <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                                 T{order.tableNumber}
                               </span>
                             ) : null}
                           </div>
-
-                          <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-                            {paymentIcon(order.paymentMethod, "h-3 w-3")}
-                            <span>{order.paymentMethod}</span>
-                            <span>·</span>
-                            <span>{order.items.length} {t("items")}</span>
-                            <span className="ml-auto font-mono">#{order.id.slice(-4)}</span>
-                          </div>
+                          <span className="text-[10px] font-mono text-muted-foreground">#{order.id.slice(-4)}</span>
                         </div>
 
-                        <div className="text-[11px] text-muted-foreground">View</div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-[12px] text-muted-foreground overflow-hidden">
+                            {paymentIcon(order.paymentMethod, "h-3 w-3 flex-shrink-0")}
+                            <span className="truncate">{order.paymentMethod}</span>
+                            <span>·</span>
+                            <span className="whitespace-nowrap">{order.items.length} {t("items")}</span>
+                          </div>
+                          <span className="text-[14px] font-bold text-foreground font-mono ml-2 flex-shrink-0">${order.total.toFixed(2)}</span>
+                        </div>
                       </button>
                     );
                   })}
