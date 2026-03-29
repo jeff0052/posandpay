@@ -121,6 +121,83 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_items: {
+        Row: {
+          category: Database["public"]["Enums"]["inventory_category"]
+          cost_per_unit: number
+          created_at: string
+          current_stock: number
+          expiry_date: string | null
+          id: string
+          last_restocked: string | null
+          name: string
+          name_zh: string | null
+          reorder_point: number
+          sku: string | null
+          supplier: string | null
+          unit: Database["public"]["Enums"]["inventory_unit"]
+          updated_at: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["inventory_category"]
+          cost_per_unit?: number
+          created_at?: string
+          current_stock?: number
+          expiry_date?: string | null
+          id?: string
+          last_restocked?: string | null
+          name: string
+          name_zh?: string | null
+          reorder_point?: number
+          sku?: string | null
+          supplier?: string | null
+          unit?: Database["public"]["Enums"]["inventory_unit"]
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["inventory_category"]
+          cost_per_unit?: number
+          created_at?: string
+          current_stock?: number
+          expiry_date?: string | null
+          id?: string
+          last_restocked?: string | null
+          name?: string
+          name_zh?: string | null
+          reorder_point?: number
+          sku?: string | null
+          supplier?: string | null
+          unit?: Database["public"]["Enums"]["inventory_unit"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      menu_item_ingredients: {
+        Row: {
+          inventory_item_id: string
+          menu_item_id: string
+          quantity_per_serving: number
+        }
+        Insert: {
+          inventory_item_id: string
+          menu_item_id: string
+          quantity_per_serving?: number
+        }
+        Update: {
+          inventory_item_id?: string
+          menu_item_id?: string
+          quantity_per_serving?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_ingredients_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_item_modifier_groups: {
         Row: {
           menu_item_id: string
@@ -415,6 +492,123 @@ export type Database = {
           },
         ]
       }
+      purchase_order_items: {
+        Row: {
+          id: string
+          inventory_item_id: string
+          purchase_order_id: string
+          quantity: number
+          unit_cost: number
+        }
+        Insert: {
+          id?: string
+          inventory_item_id: string
+          purchase_order_id: string
+          quantity?: number
+          unit_cost?: number
+        }
+        Update: {
+          id?: string
+          inventory_item_id?: string
+          purchase_order_id?: string
+          quantity?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          created_at: string
+          expected_delivery: string | null
+          id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["po_status"]
+          supplier: string
+          total_cost: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expected_delivery?: string | null
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["po_status"]
+          supplier: string
+          total_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expected_delivery?: string | null
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["po_status"]
+          supplier?: string
+          total_cost?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      queue_entries: {
+        Row: {
+          called_at: string | null
+          created_at: string
+          customer_name: string | null
+          customer_phone: string | null
+          estimated_wait: number
+          id: string
+          joined_at: string
+          notes: string | null
+          party_size: number
+          preferred_zone: string | null
+          seated_at: string | null
+          status: Database["public"]["Enums"]["queue_status"]
+        }
+        Insert: {
+          called_at?: string | null
+          created_at?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          estimated_wait?: number
+          id?: string
+          joined_at?: string
+          notes?: string | null
+          party_size?: number
+          preferred_zone?: string | null
+          seated_at?: string | null
+          status?: Database["public"]["Enums"]["queue_status"]
+        }
+        Update: {
+          called_at?: string | null
+          created_at?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          estimated_wait?: number
+          id?: string
+          joined_at?: string
+          notes?: string | null
+          party_size?: number
+          preferred_zone?: string | null
+          seated_at?: string | null
+          status?: Database["public"]["Enums"]["queue_status"]
+        }
+        Relationships: []
+      }
       restaurant_tables: {
         Row: {
           created_at: string
@@ -496,6 +690,44 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_movements: {
+        Row: {
+          created_at: string
+          id: string
+          inventory_item_id: string
+          notes: string | null
+          quantity: number
+          reason: string | null
+          type: Database["public"]["Enums"]["movement_type"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          notes?: string | null
+          quantity: number
+          reason?: string | null
+          type: Database["public"]["Enums"]["movement_type"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          notes?: string | null
+          quantity?: number
+          reason?: string | null
+          type?: Database["public"]["Enums"]["movement_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -505,7 +737,14 @@ export type Database = {
     }
     Enums: {
       customer_tier: "bronze" | "silver" | "gold" | "platinum"
+      inventory_category:
+        | "raw_ingredients"
+        | "packaging"
+        | "beverages"
+        | "supplies"
+      inventory_unit: "kg" | "L" | "pcs" | "box" | "pack" | "bottle"
       kds_status: "new" | "preparing" | "ready" | "served"
+      movement_type: "receive" | "waste" | "transfer" | "sale" | "adjustment"
       order_status:
         | "open"
         | "sent"
@@ -514,6 +753,8 @@ export type Database = {
         | "served"
         | "paid"
         | "void"
+      po_status: "draft" | "ordered" | "received" | "cancelled"
+      queue_status: "waiting" | "called" | "seated" | "no_show" | "cancelled"
       service_mode: "dine-in" | "takeaway" | "delivery" | "pickup"
       staff_role: "server" | "cashier" | "manager" | "kitchen"
       table_status:
@@ -651,7 +892,15 @@ export const Constants = {
   public: {
     Enums: {
       customer_tier: ["bronze", "silver", "gold", "platinum"],
+      inventory_category: [
+        "raw_ingredients",
+        "packaging",
+        "beverages",
+        "supplies",
+      ],
+      inventory_unit: ["kg", "L", "pcs", "box", "pack", "bottle"],
       kds_status: ["new", "preparing", "ready", "served"],
+      movement_type: ["receive", "waste", "transfer", "sale", "adjustment"],
       order_status: [
         "open",
         "sent",
@@ -661,6 +910,8 @@ export const Constants = {
         "paid",
         "void",
       ],
+      po_status: ["draft", "ordered", "received", "cancelled"],
+      queue_status: ["waiting", "called", "seated", "no_show", "cancelled"],
       service_mode: ["dine-in", "takeaway", "delivery", "pickup"],
       staff_role: ["server", "cashier", "manager", "kitchen"],
       table_status: [
