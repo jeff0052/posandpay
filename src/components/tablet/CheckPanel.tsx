@@ -61,12 +61,12 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
     return Math.min(discount, order.subtotal);
   };
 
-  const discountAmt = calcDiscount();
-  const adjustedSubtotal = order.subtotal - discountAmt;
-  const serviceCharge = adjustedSubtotal * 0.1;
-  const gst = (adjustedSubtotal + serviceCharge) * 0.09;
-  const finalTotal = adjustedSubtotal + serviceCharge + gst;
-  const splitAmount = splitCount > 1 ? finalTotal / splitCount : finalTotal;
+  const discountAmt = Math.round(calcDiscount() * 100) / 100;
+  const adjustedSubtotal = Math.round((order.subtotal - discountAmt) * 100) / 100;
+  const serviceCharge = Math.round(adjustedSubtotal * 0.1 * 100) / 100;
+  const gst = Math.round((adjustedSubtotal + serviceCharge) * 0.09 * 100) / 100;
+  const finalTotal = Math.round((adjustedSubtotal + serviceCharge + gst) * 100) / 100;
+  const splitAmount = splitCount > 1 ? Math.round(finalTotal / splitCount * 100) / 100 : finalTotal;
 
   const handleApplyPromo = () => {
     const found = availablePromos.find(p => p.code.toLowerCase() === promoCode.trim().toLowerCase());
@@ -102,8 +102,8 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
   return (
     <div className="bg-card flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center justify-between">
+      <div className="h-[52px] px-4 border-b border-border flex items-center shrink-0">
+        <div className="flex items-center justify-between flex-1">
           <div>
             <h3 className="font-semibold text-foreground text-[13px]">
               {table ? `${t("tables")} ${table.number}` : `${order.serviceMode}`}

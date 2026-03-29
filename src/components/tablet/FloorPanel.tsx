@@ -102,7 +102,7 @@ export const FloorPanel: React.FC<FloorPanelProps> = ({
       isFullscreen ? "absolute inset-0 z-40 border-r-0" : ""
     )}>
       {/* Header with logo */}
-      <div className="px-3 py-2.5 border-b border-border flex items-center gap-2 bg-card">
+      <div className="h-[52px] px-3 border-b border-border flex items-center gap-2 bg-card shrink-0">
         <img src={uniwebLogo} alt="Uniweb" className="w-7 h-7 rounded-[7px] flex-shrink-0" />
         <h2 className="font-semibold text-foreground text-[13px] flex-1">{t("floor")}</h2>
         <button

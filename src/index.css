@@ -155,16 +155,57 @@
 }
 
 @layer components {
-  .pos-scrollbar::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+  /* Hide scrollbar by default, show on hover with system scrollbar */
+  .pos-scrollbar {
+    scrollbar-width: none; /* Firefox */
   }
-  .pos-scrollbar::-webkit-scrollbar-track {
+  .pos-scrollbar::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+  .pos-scrollbar:hover {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .pos-scrollbar:hover::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .pos-scrollbar:hover::-webkit-scrollbar-track {
     background: transparent;
   }
-  .pos-scrollbar::-webkit-scrollbar-thumb {
+  .pos-scrollbar:hover::-webkit-scrollbar-thumb {
     background: hsl(var(--border));
-    border-radius: 2px;
+    border-radius: 3px;
+  }
+
+  /* Drag handle gradient style */
+  .drag-handle {
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      hsl(var(--border) / 0.3) 20%,
+      hsl(var(--border)) 45%,
+      hsl(var(--border) / 0.8) 50%,
+      hsl(var(--border)) 55%,
+      hsl(var(--border) / 0.3) 80%,
+      transparent 100%
+    );
+    cursor: col-resize;
+    touch-action: none;
+    transition: background 0.2s;
+  }
+  .drag-handle:hover, .drag-handle:active {
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      hsl(var(--primary) / 0.2) 20%,
+      hsl(var(--primary) / 0.5) 45%,
+      hsl(var(--primary) / 0.7) 50%,
+      hsl(var(--primary) / 0.5) 55%,
+      hsl(var(--primary) / 0.2) 80%,
+      transparent 100%
+    );
   }
 
   /* Uniweb-style KPI stripe */

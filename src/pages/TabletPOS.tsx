@@ -192,13 +192,14 @@ const TabletPOS: React.FC = () => {
   }, []);
 
   const recalcOrder = (items: OrderItem[]): Pick<Order, "subtotal" | "serviceCharge" | "gst" | "total"> => {
-    const subtotal = items.reduce((sum, item) => {
+    const subtotal = Math.round(items.reduce((sum, item) => {
       const modTotal = item.modifiers.reduce((ms, m) => ms + m.price, 0);
       return sum + (item.price + modTotal) * item.quantity;
-    }, 0);
-    const serviceCharge = subtotal * 0.1;
-    const gst = (subtotal + serviceCharge) * 0.09;
-    return { subtotal, serviceCharge, gst, total: subtotal + serviceCharge + gst };
+    }, 0) * 100) / 100;
+    const serviceCharge = Math.round(subtotal * 0.1 * 100) / 100;
+    const gst = Math.round((subtotal + serviceCharge) * 0.09 * 100) / 100;
+    const total = Math.round((subtotal + serviceCharge + gst) * 100) / 100;
+    return { subtotal, serviceCharge, gst, total };
   };
 
   const handleAddItem = useCallback((menuItemId: string, modifiers: { name: string; price: number }[], notes?: string, comboItems?: { name: string; groupName: string }[]) => {
@@ -376,12 +377,10 @@ const TabletPOS: React.FC = () => {
           </div>
           {/* Left drag handle */}
           <div
-            className="w-px shrink-0 bg-border cursor-col-resize relative z-10"
+            className="w-3 shrink-0 drag-handle relative z-10"
             onMouseDown={() => startDrag("left")}
             onTouchStart={() => startDrag("left")}
-          >
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-10 rounded-full bg-border hover:bg-primary transition-colors" />
-          </div>
+          />
         </>
       )}
 
@@ -411,17 +410,15 @@ const TabletPOS: React.FC = () => {
 
           {/* Right drag handle */}
           <div
-            className="w-px shrink-0 bg-border cursor-col-resize relative z-10"
+            className="w-3 shrink-0 drag-handle relative z-10"
             onMouseDown={() => startDrag("right")}
             onTouchStart={() => startDrag("right")}
-          >
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-10 rounded-full bg-border hover:bg-primary transition-colors" />
-          </div>
+          />
 
           {/* Right panel: check or history */}
           <div style={{ width: `${rightWidth * 100}%` }} className="shrink-0 flex flex-col">
             {/* Top controls bar — History button + ThemeToggle aligned */}
-            <div className="flex items-center justify-end gap-2 px-3 py-2.5 border-b border-border bg-card shrink-0">
+            <div className="h-[52px] flex items-center justify-end gap-2 px-3 border-b border-border bg-card shrink-0">
               <button
                 onClick={() => setShowHistory(h => !h)}
                 className={cn(
