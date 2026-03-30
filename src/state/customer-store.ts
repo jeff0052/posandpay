@@ -62,3 +62,35 @@ export const addCustomer = (customer: CustomerFull) => {
   customersState = [...customersState, { ...customer, segment: classifySegment(customer) }];
   emit();
 };
+
+export const findByPhone = (phone: string): CustomerFull | undefined => {
+  const normalized = phone.replace(/\s/g, "").slice(-8);
+  return customersState.find(c => c.phone.replace(/\s/g, "").endsWith(normalized));
+};
+
+export const registerCustomer = (phone: string, email?: string, nickname?: string): CustomerFull => {
+  const newCustomer: CustomerFull = {
+    id: `c-${Date.now()}`,
+    name: nickname || "Guest",
+    phone: `+65 ${phone}`,
+    email: email || undefined,
+    tags: ["qr-signup"],
+    visits: 0,
+    points: 0,
+    tier: "bronze",
+    totalSpend: 0,
+    averageTicket: 0,
+    preferredItems: [],
+    lastVisit: new Date().toISOString().slice(0, 10),
+    createdAt: new Date().toISOString().slice(0, 10),
+    segment: "new",
+  };
+  addCustomer(newCustomer);
+  return newCustomer;
+};
+
+export const addPoints = (customerId: string, amount: number) => {
+  const points = Math.floor(amount);
+  customersState = customersState.map(c => c.id === customerId ? { ...c, points: c.points + points } : c);
+  emit();
+};

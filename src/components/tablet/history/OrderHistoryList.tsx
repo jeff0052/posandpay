@@ -17,6 +17,8 @@ const serviceModeLabel: Record<PaidOrder["serviceMode"], { en: string; zh: strin
   takeaway: { en: "Takeaway", zh: "外带" },
   delivery: { en: "Delivery", zh: "外卖" },
   pickup: { en: "Pickup", zh: "自取" },
+  kiosk: { en: "Kiosk", zh: "自助" },
+  qr: { en: "QR Order", zh: "扫码" },
 };
 
 const serviceModeColors: Record<PaidOrder["serviceMode"], string> = {
@@ -24,6 +26,8 @@ const serviceModeColors: Record<PaidOrder["serviceMode"], string> = {
   takeaway: "bg-status-amber-light text-status-amber",
   delivery: "bg-status-green-light text-status-green",
   pickup: "bg-accent text-muted-foreground",
+  kiosk: "bg-status-amber-light text-status-amber",
+  qr: "bg-status-blue-light text-primary",
 };
 
 const paymentIcon = (method: string, size = "h-3.5 w-3.5") => {

@@ -1,7 +1,7 @@
 // Mock data for POS prototype
 
 export type TableStatus = "available" | "reserved" | "ordering" | "ordered" | "dirty" | "cleaning";
-export type ServiceMode = "dine-in" | "takeaway" | "delivery" | "pickup";
+export type ServiceMode = "dine-in" | "takeaway" | "delivery" | "pickup" | "kiosk" | "qr";
 export type OrderStatus = "open" | "sent" | "preparing" | "ready" | "served" | "paid" | "void";
 export type KDSStatus = "new" | "preparing" | "ready" | "served";
 

@@ -22,6 +22,8 @@ import AdminInventory from "./pages/admin/AdminInventory";
 import AdminFloorPlan from "./pages/admin/AdminFloorPlan";
 import AdminQueue from "./pages/admin/AdminQueue";
 import QueueKiosk from "./pages/QueueKiosk";
+import KioskOrdering from "./pages/KioskOrdering";
+import QROrdering from "./pages/QROrdering";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +41,8 @@ const App = () => (
               <Route path="/tablet" element={<TabletPOS />} />
               <Route path="/mobile" element={<MobilePOS />} />
               <Route path="/queue" element={<QueueKiosk />} />
+              <Route path="/kiosk" element={<KioskOrdering />} />
+              <Route path="/qr" element={<QROrdering />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="menu" element={<AdminMenu />} />
