@@ -1,170 +1,105 @@
 
 
-# Full POS System Upgrade Plan
+# Gemini-Inspired UI Evolution Plan
 
-This plan covers all requested changes: UI fixes, financial logic, order lifecycle, and four new modules.
+## Design Philosophy Extracted from Google Gemini
 
----
+The Gemini design article emphasizes: **directional gradients** as context builders, **soft rounded shapes** for warmth and trust, **intentional micro-motion** to convey system state, and an overall **"warm, spatial, ethereal"** quality. The key is not flashy effects but subtle, purposeful visual cues that make the interface feel alive and intelligent.
 
-## Part A: UI Fixes (TabletPOS)
+## What Changes (and What Does NOT)
 
-### A1. Wider Drag Handle with Gradient Style
-**Current**: Drag handles are 1px wide with a small pill — hard to touch.
-**Change**: Replace the `w-px` drag dividers in `TabletPOS.tsx` with `w-3` (12px) touch zones. Style with a vertical gradient: transparent → border-color → transparent, with a centered darker line. Remove the pill element. The entire strip triggers `startDrag()`.
+**Preserved**: All layout structure, component hierarchy, brand colors (primary blue `221 63% 33%`), warm palette, DM Sans typography, existing functionality.
 
-### A2. Hide Scrollbars Until Scrolling
-**Current**: `pos-scrollbar` in `index.css` shows custom scrollbar always.
-**Change**: Update `.pos-scrollbar` to hide scrollbar by default (`scrollbar-width: none`, `::-webkit-scrollbar { display: none }`). On hover/scroll, show native system scrollbar using a `.scrolling` class toggled via CSS `:hover` or a thin auto-hide approach. Simpler: use `overflow: auto` + `scrollbar-gutter: stable` with hidden-until-hover via `opacity: 0 → 1` on the scrollbar thumb.
-
-### A3. Unified Header Heights
-**Current**: FloorPanel header uses `px-3 py-2.5`, MenuComposer uses `px-5 py-2.5`, CheckPanel uses `p-4`. Different visual heights.
-**Change**: Standardize all three panels to use the same height (e.g., `h-[52px]` with consistent padding), so the top border-b line aligns across all three columns.
-
-### A4. Order History List Layout Fix
-**Current**: `grid-cols-[64px_minmax(0,1fr)_auto]` layout breaks on narrow widths. Order ID `#4651` positioned oddly via `ml-auto` inside flex.
-**Change**: 
-- Move order ID (`#{order.id.slice(-4)}`) to the top-right of each row as a subtle label instead of inline with payment info.
-- Make the grid responsive: switch to a flex/stack layout when the panel is narrow.
-- Ensure table number always shows when present.
-- Add `overflow-hidden` and `text-ellipsis` on wrapping elements.
+**Enhanced**: Surface treatments, transitions, status indicators, hover/active states, shadows, and subtle ambient effects.
 
 ---
 
-## Part B: Business Logic
+## Changes
 
-### B1. Financial Calculations (2-decimal rounding)
-**Files**: `TabletPOS.tsx` (`recalcOrder`), `CheckPanel.tsx`, `MobilePOS.tsx`
-- Wrap all monetary computations with `Math.round(x * 100) / 100`
-- Discount applied first, then service charge (10% of adjusted subtotal), then GST (9% of subtotal + service charge)
-- Split bill: divide total equally, add rounding remainder to last share
-- Already mostly correct in CheckPanel; just add explicit rounding at each step.
+### 1. Gradient Accent System (CSS variables + utility classes)
+**File**: `src/index.css`
 
-### B2. Order Lifecycle State Machine
-**File**: `TabletPOS.tsx` + new `src/lib/order-state-machine.ts`
-- Define valid transitions: `open → sent → preparing → ready → served → paid`, plus `void` from any state.
-- `void` requires manager PIN check (prompt dialog against `staffMembers` with role "manager").
-- On `paid`: set table status to `"dirty"`.
-- Add table cleaning flow handlers: `dirty → cleaning → available` (click dirty table → confirm → cleaning; click cleaning → available).
-- Wire into FloorPanel's `handleTableClick` for dirty/cleaning status.
+Add CSS custom properties for reusable gradients derived from the existing primary blue:
+- `--gradient-ai`: A subtle blue-to-transparent radial gradient for card highlights and active states (Gemini's "energy diffusion" concept)
+- `--gradient-surface`: A very faint warm-to-cool diagonal for elevated surfaces
+- `--gradient-status`: Per-status soft radial glows (green, amber, red) replacing flat background colors on KPI stripes
 
-### B3. Inventory Deduction (stub)
-- When order status → "sent", call a deduction function.
-- This will be fully implemented with the Inventory module (C1).
-- For now, add the hook point in `TabletPOS.tsx`.
+Add utility classes:
+- `.surface-glow`: Subtle inner radial gradient overlay on cards when hovered — replaces flat `hover:bg-accent`
+- `.status-pulse`: CSS animation for status dots — a soft scale+opacity pulse (replaces static dots)
+- `.gradient-border`: A 1px border that subtly shifts from `border-color` to `primary/20` — for active/selected cards
 
----
+### 2. KPI Cards Enhancement
+**File**: `src/pages/admin/AdminDashboard.tsx`
 
-## Part C: New Modules
+- Replace flat `kpi-stripe` (solid 3px bar) with a gradient stripe that fades from the status color to transparent horizontally
+- Add a very subtle radial glow in the top-left corner of each card (Gemini's "concentrated energy" metaphor)
+- Values animate in with a gentle `fade-in` + counter effect on mount
 
-### C1. Inventory Management (`/admin/inventory`)
+### 3. Table Status Cards — Living Indicators
+**File**: `src/components/tablet/FloorPanel.tsx`
 
-**New files**:
-- `src/state/inventory-store.ts` — reactive store (same pattern as `menu-store.ts`) with `InventoryItem` type (id, name, nameZh, sku, category, unit, currentStock, reorderPoint, costPerUnit, supplier, lastRestocked, expiryDate)
-- `src/pages/admin/AdminInventory.tsx` — full page with:
-  - KPI cards (Total SKUs, Low Stock Alerts, Total Value, Expiring Soon)
-  - Tabs: Stock List / Purchase Orders / Stock Movement Log
-  - Searchable table with progress bars for stock levels
-  - Color-coded status badges
-  - Inline stock adjustment modal (receive/waste/transfer with reason codes)
-  - Purchase order creation form
-  - Movement history log
+- Status dots get `.status-pulse` animation (subtle breathing effect, 3s cycle)
+- Selected table card gets a soft gradient border glow instead of solid `ring-2`
+- Available tables get a very subtle green radial glow on hover (inviting, Gemini's "discovery" concept)
+- Transition border-color and box-shadow with `transition-all duration-300 ease-out` (smoother than current)
 
-**Database migration**: Create `inventory_items`, `purchase_orders`, `purchase_order_items`, `stock_movements` tables. Create `menu_item_ingredients` junction table for menu-inventory linking.
+### 4. Refined Shadows & Surface Depth
+**File**: `src/index.css` + `tailwind.config.ts`
 
-### C2. Professional CRM (`/admin/crm` upgrade)
+Add custom box-shadows that use tinted colors instead of pure black:
+- `shadow-soft`: `0 1px 3px hsl(var(--primary) / 0.04), 0 4px 12px hsl(var(--primary) / 0.06)` — for cards
+- `shadow-elevated`: Deeper tinted shadow for popovers/sheets
+- `.uniweb-card` gets `shadow-soft` by default; on hover transitions to `shadow-elevated`
 
-**Changes**:
-- Expand `Customer` type in `mock-data.ts` with: `dateOfBirth`, `address`, `tags[]`, `totalSpend`, `averageTicket`, `preferredItems[]`, `notes`, `createdAt`, `segment`
-- Create `src/state/customer-store.ts` (reactive store)
-- Complete rewrite of `AdminCRM.tsx`:
-  - KPI dashboard cards (Total Customers, New This Month, Avg Spend, Retention Rate)
-  - Customer segment filters (new/regular/VIP/at-risk/churned) with auto-classification
-  - Expandable customer detail panel (profile, visit timeline, spend chart, tags, notes)
-  - Search by name/phone/email/membership
-  - Bulk actions bar (send promo, update tier, export)
-  - Loyalty section: points balance, tier progression, point history
-  - Birthday tracking with upcoming list
+Dark mode shadows use `hsl(0 0% 0% / 0.3)` for depth without washing out.
 
-### C3. Floor Plan Editor (`/admin/floorplan`)
+### 5. Smoother Micro-Animations
+**File**: `tailwind.config.ts` keyframes + `src/index.css`
 
-**New files**:
-- `src/state/floorplan-store.ts` — stores table positions (`x`, `y`, width, height) per zone
-- `src/pages/admin/AdminFloorPlan.tsx`:
-  - Grid canvas with drag-and-drop table placement
-  - Table shapes: round (2-4), square (4), rectangular (6-8), booth (4-6)
-  - Add/remove/resize tables
-  - Zone management (create/rename/reorder)
-  - Snap-to-grid with alignment guides
-  - Save layout per zone
-  - Preview mode with real-time status overlay
-  - Uses HTML5 drag or pointer events (no external lib needed)
+- `status-pulse`: `scale(1) → scale(1.4) → scale(1)` with `opacity(1) → opacity(0.6) → opacity(1)`, 3s infinite
+- `shimmer`: A horizontal gradient sweep for loading states (Gemini's "thinking" indicator)
+- `glow-in`: Radial gradient opacity from 0 to target, 0.4s ease-out — for card mount
+- `slide-fade`: Combined translateY(6px)+opacity(0) → translateY(0)+opacity(1) — replaces current `fadeUp`
+- Update all `transition-colors` to `transition-all duration-200 ease-out` for smoother feel
 
-### C4. Queue Management (`/admin/queue` + `/queue`)
+### 6. Active Navigation Glow
+**Files**: `src/pages/admin/AdminLayout.tsx`, `src/components/tablet/FloorPanel.tsx`
 
-**New files**:
-- `src/state/queue-store.ts` — reactive store for `QueueEntry` (id, partySize, customerName, customerPhone, estimatedWait, status, joinedAt, calledAt, seatedAt, notes, preferredZone)
-- `src/pages/admin/AdminQueue.tsx`:
-  - Real-time queue board with wait count and average wait
-  - Add walk-in form (party size, contact)
-  - Call next action with visual notification
-  - Entry states: Waiting → Called → Seated / No-Show
-  - Historical stats: avg wait, no-show rate, peak hours
-  - Configurable wait time per party size
-- `src/pages/QueueKiosk.tsx` (public `/queue` route):
-  - Clean customer-facing display showing queue position
-  - Self-service join queue form
-  - Real-time position updates
+- Active sidebar nav item gets a subtle left-edge gradient (2px wide, primary color fading to transparent vertically) instead of flat `bg-primary` block
+- Active category pills in MenuComposer get a soft gradient background (primary → primary/80) instead of flat color
 
-**Database migration**: Create `queue_entries` table with RLS policies.
+### 7. Frosted Glass Effect on Overlays
+**File**: `src/index.css`
+
+- Add `.glass` utility: `backdrop-filter: blur(12px); background: hsl(var(--card) / 0.85);`
+- Apply to payment sheet overlay, modifier dialog backdrop, and mobile bottom sheets
+- Gives the "ethereal, in-between" quality described in the Gemini article
+
+### 8. Homepage Entry Cards
+**File**: `src/pages/Index.tsx`
+
+- Icon containers get a subtle radial gradient background (from `primary/10` center to transparent edge)
+- On hover, the gradient intensifies and slightly expands (scale 1.05 on the icon container)
+- Card border transitions to a gradient-like glow via `box-shadow` rather than `border-color` alone
+
+### 9. Dark Mode Ambient Glow
+**File**: `src/index.css` (`.dark` section)
+
+- Cards in dark mode get a very faint `box-shadow: 0 0 0 1px hsl(var(--border)), 0 0 24px -8px hsl(var(--primary) / 0.08)` — ambient blue glow that makes the UI feel more spatial
+- Active elements get stronger glow intensity
 
 ---
 
-## Part D: Routes & Navigation
+## Technical Details
 
-### App.tsx
-Add routes:
-```
-/admin/inventory   → AdminInventory
-/admin/floorplan   → AdminFloorPlan
-/admin/queue       → AdminQueue
-/queue             → QueueKiosk
-```
+**Files modified** (~6):
+- `src/index.css` — gradient variables, utility classes, animations, glass effect, dark mode glow
+- `tailwind.config.ts` — custom shadows, new keyframes/animations
+- `src/pages/admin/AdminDashboard.tsx` — gradient KPI stripes, glow accents
+- `src/components/tablet/FloorPanel.tsx` — pulsing status dots, gradient borders
+- `src/pages/Index.tsx` — gradient icon containers, hover glow
+- `src/pages/admin/AdminLayout.tsx` — active nav gradient edge
 
-### AdminLayout.tsx
-Add sidebar nav items:
-- Inventory (Package icon) — after Promotions
-- Floor Plan (Map icon) — after Inventory
-- Queue (ListOrdered icon) — after Floor Plan
-
----
-
-## Database Migrations
-
-Two migrations needed:
-
-**Migration 1: Inventory tables**
-- `inventory_items` (id, name, name_zh, sku, category, unit, current_stock, reorder_point, cost_per_unit, supplier, last_restocked, expiry_date, created_at, updated_at)
-- `purchase_orders` (id, supplier, status, expected_delivery, notes, total_cost, created_at, updated_at)
-- `purchase_order_items` (id, purchase_order_id, inventory_item_id, quantity, unit_cost)
-- `stock_movements` (id, inventory_item_id, type, quantity, reason, notes, created_at)
-- `menu_item_ingredients` (menu_item_id, inventory_item_id, quantity_per_serving)
-
-**Migration 2: Queue table**
-- `queue_entries` (id, party_size, customer_name, customer_phone, estimated_wait, status, joined_at, called_at, seated_at, notes, preferred_zone, created_at)
-
-All tables with public RLS policies (matching existing POS pattern).
-
----
-
-## Implementation Order
-
-1. Database migrations (inventory + queue tables)
-2. UI fixes (drag handles, scrollbars, header alignment, order history)
-3. Financial calculations + order lifecycle logic
-4. State stores (inventory, customer, floorplan, queue)
-5. New admin pages (Inventory, CRM rewrite, FloorPlan, Queue)
-6. Queue kiosk public page
-7. Routes + navigation updates
-
-**Estimated file changes**: ~15 new files, ~8 modified files.
+**No structural changes**. All enhancements are additive CSS/className updates. No new dependencies needed. Every effect uses CSS custom properties tied to existing design tokens, so brand colors are maintained automatically in both light and dark modes.
 
