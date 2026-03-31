@@ -9,11 +9,12 @@ const Index: React.FC = () => (
       <img src={uniwebLogo} alt="Uniweb" className="w-16 h-16 rounded-2xl mx-auto mb-5" />
       <h1 className="text-2xl font-bold text-foreground tracking-tight mb-1">Uniweb Smart POS</h1>
       <p className="text-[13px] text-muted-foreground mb-10">Select a surface to explore</p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-4">
         {[
           { to: "/tablet", icon: Monitor, title: "Tablet POS", desc: "Cashier workstation" },
           { to: "/mobile", icon: Smartphone, title: "Mobile POS", desc: "Handheld ordering" },
           { to: "/kiosk", icon: MonitorSmartphone, title: "Kiosk", desc: "Self-service ordering" },
+          { to: "/kds", icon: Monitor, title: "Kitchen Display", desc: "Kitchen & pickup screen" },
           { to: "/qr", icon: QrCode, title: "QR Order", desc: "Scan-to-order" },
           { to: "/admin", icon: Settings, title: "Admin", desc: "Merchant portal" },
         ].map((s, i) => (
