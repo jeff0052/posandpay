@@ -1,10 +1,14 @@
 import React, { useState } from "react";
-import { Search, ShoppingBag, Truck, ArrowRightLeft, Merge, Split, X, Check, Users, Maximize2, Minimize2, CalendarCheck, UserCheck } from "lucide-react";
+import { Search, ShoppingBag, Truck, ArrowRightLeft, Merge, Split, X, Check, Users, Maximize2, Minimize2, CalendarCheck, UserCheck, List, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { type Table, type TableStatus, type ServiceMode, zones } from "@/data/mock-data";
+import { type Table, type TableStatus, type ServiceMode, type Reservation, type CancelReason, zones } from "@/data/mock-data";
 import { useLanguage } from "@/hooks/useLanguage";
 import uniwebLogo from "@/assets/uniweb-logo.jpg";
+import { ReservationDialog } from "./ReservationDialog";
+import { CancelReservationDialog } from "./CancelReservationDialog";
+import { SeatReservationDialog } from "./SeatReservationDialog";
+import { ReservationListPanel } from "./ReservationListPanel";
 
 type TableAction = "transfer" | "merge" | "split" | null;
 
@@ -18,8 +22,10 @@ interface FloorPanelProps {
   onSplitTable?: (tableId: string, count: number) => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
-  onSeatReserved?: (tableId: string) => void;
-  onReserveTable?: (tableId: string, guestCount: number, customerName?: string) => void;
+  onSeatReserved?: (tableId: string, guestCount: number, customerId?: string) => void;
+  onReserveTable?: (tableId: string, data: { guestName: string; guestCount: number; phone?: string; reservationTime?: string; notes?: string }) => void;
+  onCancelReservation?: (tableId: string, reason: CancelReason, note?: string) => void;
+  reservations?: Reservation[];
 }
 
 const statusConfig: Record<TableStatus, { dot: string; border: string; bg: string; labelKey: string; badgeBg: string; badgeText: string }> = {
@@ -37,17 +43,18 @@ export const FloorPanel: React.FC<FloorPanelProps> = ({
   tables, selectedTableId, onSelectTable, onCreateWalkIn,
   onTransferTable, onMergeTables, onSplitTable,
   isFullscreen, onToggleFullscreen,
-  onSeatReserved, onReserveTable,
+  onSeatReserved, onReserveTable, onCancelReservation, reservations,
 }) => {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const [activeZone, setActiveZone] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [tableAction, setTableAction] = useState<TableAction>(null);
   const [mergeTargets, setMergeTargets] = useState<string[]>([]);
   const [splitCount, setSplitCount] = useState(2);
   const [showReserveDialog, setShowReserveDialog] = useState(false);
-  const [reserveGuestCount, setReserveGuestCount] = useState(2);
-  const [reserveCustomerName, setReserveCustomerName] = useState("");
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showSeatDialog, setShowSeatDialog] = useState(false);
+  const [viewMode, setViewMode] = useState<"floor" | "reservations">("floor");
 
   const filteredTables = tables.filter(t => {
     if (activeZone !== "All" && t.zone !== activeZone) return false;
@@ -77,6 +84,10 @@ export const FloorPanel: React.FC<FloorPanelProps> = ({
       );
       if (!confirmed) return;
     }
+    // Close any open dialogs when selecting a new table
+    setShowReserveDialog(false);
+    setShowCancelDialog(false);
+    setShowSeatDialog(false);
     onSelectTable(tableId);
   };
 
@@ -94,7 +105,10 @@ export const FloorPanel: React.FC<FloorPanelProps> = ({
   const cancelAction = () => { setTableAction(null); setMergeTargets([]); };
 
   const selectedTable = tables.find(t => t.id === selectedTableId);
-  const showActions = selectedTable && !tableAction && (selectedTable.status === "ordering" || selectedTable.status === "ordered" || selectedTable.status === "available");
+  const showActions = selectedTable && !tableAction && (selectedTable.status === "ordering" || selectedTable.status === "ordered" || selectedTable.status === "available" || selectedTable.status === "reserved");
+  const selectedReservation = selectedTableId && reservations ? reservations.find(r => r.tableId === selectedTableId && r.status === "pending") : undefined;
+
+  const pendingCount = reservations ? reservations.filter(r => r.status === "pending").length : 0;
 
   return (
     <div className={cn(
@@ -128,150 +142,204 @@ export const FloorPanel: React.FC<FloorPanelProps> = ({
         </div>
       </div>
 
-      {/* Zone Tabs */}
-      <div className="flex flex-wrap gap-1 px-3 py-2 border-b border-border">
-        {[t("all"), ...zones].map((zone, idx) => {
-          const rawZone = idx === 0 ? "All" : zones[idx - 1];
-          return (
-            <button
-              key={rawZone}
-              onClick={() => setActiveZone(rawZone)}
-              className={cn(
-                "px-2.5 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors min-h-[36px]",
-                activeZone === rawZone
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent"
-              )}
-            >
-              {zone}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Status Legend */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1.5 border-b border-border bg-accent/30">
-        {allStatuses.map(status => {
-          const cfg = statusConfig[status];
-          return (
-            <div key={status} className="flex items-center gap-1.5">
-              <span className={cn("w-[7px] h-[7px] rounded-full status-pulse", cfg.dot)} />
-              <span className="text-[10px] text-muted-foreground font-medium">{t(cfg.labelKey)}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Action mode banner */}
-      {tableAction && (
-        <div className="px-3 py-2 bg-primary/10 border-b border-primary/20">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-primary">
-              {tableAction === "transfer" && t("select_target")}
-              {tableAction === "merge" && `${t("select_tables_to_merge")} (${mergeTargets.length})`}
-              {tableAction === "split" && t("split_table")}
+      {/* View Toggle: Floor Plan vs Reservations */}
+      <div className="flex gap-1 px-3 py-1.5 border-b border-border">
+        <button
+          onClick={() => setViewMode("floor")}
+          className={cn(
+            "flex-1 h-8 rounded-md text-[11px] font-medium transition-colors",
+            viewMode === "floor" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
+          )}
+        >
+          {t("floor")}
+        </button>
+        <button
+          onClick={() => setViewMode("reservations")}
+          className={cn(
+            "flex-1 h-8 rounded-md text-[11px] font-medium transition-colors flex items-center justify-center gap-1",
+            viewMode === "reservations" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
+          )}
+        >
+          <List className="h-3 w-3" />
+          {t("reservationList")}
+          {pendingCount > 0 && (
+            <span className="w-4 h-4 rounded-full bg-status-red text-white text-[9px] font-bold flex items-center justify-center">
+              {pendingCount}
             </span>
-            <button onClick={cancelAction} className="p-1 rounded hover:bg-accent min-h-[44px] min-w-[44px] flex items-center justify-center">
-              <X className="h-3.5 w-3.5 text-muted-foreground" />
-            </button>
+          )}
+        </button>
+      </div>
+
+      {viewMode === "floor" ? (
+        <>
+          {/* Zone Tabs */}
+          <div className="flex flex-wrap gap-1 px-3 py-2 border-b border-border">
+            {[t("all"), ...zones].map((zone, idx) => {
+              const rawZone = idx === 0 ? "All" : zones[idx - 1];
+              return (
+                <button
+                  key={rawZone}
+                  onClick={() => setActiveZone(rawZone)}
+                  className={cn(
+                    "px-2.5 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors min-h-[36px]",
+                    activeZone === rawZone
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent"
+                  )}
+                >
+                  {zone}
+                </button>
+              );
+            })}
           </div>
-          {tableAction === "split" && (
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-[11px] text-foreground">{t("split_into")}</span>
-              <div className="flex items-center gap-1">
-                {[2, 3, 4].map(n => (
+
+          {/* Status Legend */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1.5 border-b border-border bg-accent/30">
+            {allStatuses.map(status => {
+              const cfg = statusConfig[status];
+              return (
+                <div key={status} className="flex items-center gap-1.5">
+                  <span className={cn("w-[7px] h-[7px] rounded-full status-pulse", cfg.dot)} />
+                  <span className="text-[10px] text-muted-foreground font-medium">{t(cfg.labelKey)}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Action mode banner */}
+          {tableAction && (
+            <div className="px-3 py-2 bg-primary/10 border-b border-primary/20">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-primary">
+                  {tableAction === "transfer" && t("select_target")}
+                  {tableAction === "merge" && `${t("select_tables_to_merge")} (${mergeTargets.length})`}
+                  {tableAction === "split" && t("split_table")}
+                </span>
+                <button onClick={cancelAction} className="p-1 rounded hover:bg-accent min-h-[44px] min-w-[44px] flex items-center justify-center">
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </div>
+              {tableAction === "split" && (
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-[11px] text-foreground">{t("split_into")}</span>
+                  <div className="flex items-center gap-1">
+                    {[2, 3, 4].map(n => (
+                      <button
+                        key={n}
+                        onClick={() => setSplitCount(n)}
+                        className={cn(
+                          "w-9 h-9 rounded-md text-xs font-bold transition-colors",
+                          splitCount === n ? "bg-primary text-primary-foreground" : "bg-accent text-foreground"
+                        )}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={handleConfirmSplit} className="ml-auto p-2 rounded-md bg-primary text-primary-foreground min-h-[44px] min-w-[44px] flex items-center justify-center">
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+              {tableAction === "merge" && mergeTargets.length >= 2 && (
+                <Button size="sm" className="w-full mt-2 h-9 text-xs rounded-md" onClick={handleConfirmMerge}>
+                  {t("merge_confirm")} ({mergeTargets.length} {t("tables")})
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Table Grid */}
+          <div className="flex-1 overflow-y-auto pos-scrollbar p-3">
+            <div className={cn(
+              "grid gap-2.5",
+              isFullscreen ? "grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8" : "grid-cols-2"
+            )}>
+              {filteredTables.map(table => {
+                const cfg = statusConfig[table.status];
+                const isSelected = selectedTableId === table.id;
+                const isMergeTarget = mergeTargets.includes(table.id);
+                return (
                   <button
-                    key={n}
-                    onClick={() => setSplitCount(n)}
+                    key={table.id}
+                    onClick={() => handleTableClick(table.id)}
                     className={cn(
-                      "w-9 h-9 rounded-md text-xs font-bold transition-colors",
-                      splitCount === n ? "bg-primary text-primary-foreground" : "bg-accent text-foreground"
+                      "relative rounded-xl border-[2px] text-left transition-all duration-300 ease-out p-3 active:scale-95 surface-glow",
+                      cfg.bg, cfg.border,
+                      isSelected && "gradient-ring border-primary/30",
+                      isMergeTarget && "gradient-ring bg-primary/10",
+                      tableAction === "transfer" && table.status !== "available" && table.id !== selectedTableId && "opacity-40 pointer-events-none"
                     )}
                   >
-                    {n}
+                    {/* Row 1: Table number + status dot */}
+                    <div className="flex items-start justify-between mb-2">
+                      <span className="font-bold text-foreground text-[16px] leading-none">#{table.number}</span>
+                      <span className={cn("w-[10px] h-[10px] rounded-full flex-shrink-0 mt-0.5 status-pulse", cfg.dot)} />
+                    </div>
+
+                    {/* Row 2: Seats */}
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-2">
+                      <Users className="h-3 w-3 flex-shrink-0" />
+                      <span>{table.seats} {t("seats")}</span>
+                    </div>
+
+                    {/* Row 3: Status badge */}
+                    <div>
+                      <span className={cn("inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md", cfg.badgeBg, cfg.badgeText)}>
+                        {t(cfg.labelKey)}
+                      </span>
+                    </div>
+
+                    {/* Reservation info on card */}
+                    {table.status === "reserved" && table.reservationName && (
+                      <div className="mt-1.5 pt-1 border-t border-border/50">
+                        <div className="text-[10px] font-medium text-primary truncate">{table.reservationName}</div>
+                        {table.reservationTime && (
+                          <div className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                            <Clock className="h-2.5 w-2.5" />
+                            {new Date(table.reservationTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Amount + elapsed (only for active tables) */}
+                    {(table.openAmount !== undefined && table.openAmount > 0) && (
+                      <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-border/50">
+                        <span className="text-[11px] font-semibold text-foreground font-mono">${table.openAmount.toFixed(2)}</span>
+                        {table.elapsedMinutes !== undefined && table.elapsedMinutes > 0 && (
+                          <span className="text-[10px] text-muted-foreground">{table.elapsedMinutes}m</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Merged indicator */}
+                    {table.mergedWith && table.mergedWith.length > 0 && (
+                      <div className="text-[9px] text-primary font-medium mt-1">
+                        +T{table.mergedWith.map(id => tables.find(t => t.id === id)?.number).join(",T")}
+                      </div>
+                    )}
                   </button>
-                ))}
-              </div>
-              <button onClick={handleConfirmSplit} className="ml-auto p-2 rounded-md bg-primary text-primary-foreground min-h-[44px] min-w-[44px] flex items-center justify-center">
-                <Check className="h-3.5 w-3.5" />
-              </button>
+                );
+              })}
             </div>
-          )}
-          {tableAction === "merge" && mergeTargets.length >= 2 && (
-            <Button size="sm" className="w-full mt-2 h-9 text-xs rounded-md" onClick={handleConfirmMerge}>
-              {t("merge_confirm")} ({mergeTargets.length} {t("tables")})
-            </Button>
-          )}
-        </div>
+          </div>
+        </>
+      ) : (
+        /* Reservations List View */
+        <ReservationListPanel
+          reservations={reservations || []}
+          onSelectReservation={(_rId, tId) => {
+            setViewMode("floor");
+            onSelectTable(tId);
+          }}
+        />
       )}
 
-      {/* Table Grid — redesigned cards matching screenshot */}
-      <div className="flex-1 overflow-y-auto pos-scrollbar p-3">
-        <div className={cn(
-          "grid gap-2.5",
-          isFullscreen ? "grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8" : "grid-cols-2"
-        )}>
-          {filteredTables.map(table => {
-            const cfg = statusConfig[table.status];
-            const isSelected = selectedTableId === table.id;
-            const isMergeTarget = mergeTargets.includes(table.id);
-            return (
-              <button
-                key={table.id}
-                onClick={() => handleTableClick(table.id)}
-                className={cn(
-                  "relative rounded-xl border-[2px] text-left transition-all duration-300 ease-out p-3 active:scale-95 surface-glow",
-                  cfg.bg, cfg.border,
-                  isSelected && "gradient-ring border-primary/30",
-                  isMergeTarget && "gradient-ring bg-primary/10",
-                  tableAction === "transfer" && table.status !== "available" && table.id !== selectedTableId && "opacity-40 pointer-events-none"
-                )}
-              >
-                {/* Row 1: Table number + status dot */}
-                <div className="flex items-start justify-between mb-2">
-                  <span className="font-bold text-foreground text-[16px] leading-none">#{table.number}</span>
-                  <span className={cn("w-[10px] h-[10px] rounded-full flex-shrink-0 mt-0.5 status-pulse", cfg.dot)} />
-                </div>
-
-                {/* Row 2: Seats */}
-                <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-2">
-                  <Users className="h-3 w-3 flex-shrink-0" />
-                  <span>{table.seats} {t("seats")}</span>
-                </div>
-
-                {/* Row 3: Status badge */}
-                <div>
-                  <span className={cn("inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md", cfg.badgeBg, cfg.badgeText)}>
-                    {t(cfg.labelKey)}
-                  </span>
-                </div>
-
-                {/* Amount + elapsed (only for active tables) */}
-                {(table.openAmount !== undefined && table.openAmount > 0) && (
-                  <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-border/50">
-                    <span className="text-[11px] font-semibold text-foreground font-mono">${table.openAmount.toFixed(2)}</span>
-                    {table.elapsedMinutes !== undefined && table.elapsedMinutes > 0 && (
-                      <span className="text-[10px] text-muted-foreground">{table.elapsedMinutes}m</span>
-                    )}
-                  </div>
-                )}
-
-                {/* Merged indicator */}
-                {table.mergedWith && table.mergedWith.length > 0 && (
-                  <div className="text-[9px] text-primary font-medium mt-1">
-                    +T{table.mergedWith.map(id => tables.find(t => t.id === id)?.number).join(",T")}
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Table Actions */}
-      {showActions && !isFullscreen && (
+      {showActions && !isFullscreen && viewMode === "floor" && (
         <div className="px-3 py-2 border-t border-border space-y-1.5">
-          {/* Reserve / Seat actions for available and reserved tables */}
+          {/* Reserve action for available tables */}
           {selectedTable?.status === "available" && (
             <Button
               variant="outline"
@@ -280,18 +348,30 @@ export const FloorPanel: React.FC<FloorPanelProps> = ({
               onClick={() => setShowReserveDialog(true)}
             >
               <CalendarCheck className="h-3.5 w-3.5" />
-              {lang === "zh" ? "预订座位" : "Reserve Table"}
+              {t("reserveTable")}
             </Button>
           )}
+          {/* Seat + Cancel actions for reserved tables */}
           {selectedTable?.status === "reserved" && (
-            <Button
-              size="sm"
-              className="w-full justify-start gap-2 text-xs rounded-lg min-h-[40px]"
-              onClick={() => { if (selectedTableId) onSeatReserved?.(selectedTableId); }}
-            >
-              <UserCheck className="h-3.5 w-3.5" />
-              {lang === "zh" ? "入座" : "Seat Guests"}
-            </Button>
+            <>
+              <Button
+                size="sm"
+                className="w-full justify-start gap-2 text-xs rounded-lg min-h-[40px]"
+                onClick={() => setShowSeatDialog(true)}
+              >
+                <UserCheck className="h-3.5 w-3.5" />
+                {t("seatGuests")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-start gap-2 text-xs rounded-lg min-h-[40px] text-status-red hover:text-status-red"
+                onClick={() => setShowCancelDialog(true)}
+              >
+                <X className="h-3.5 w-3.5" />
+                {t("cancelReservation")}
+              </Button>
+            </>
           )}
           <div className="flex gap-1">
             <button
@@ -319,49 +399,46 @@ export const FloorPanel: React.FC<FloorPanelProps> = ({
         </div>
       )}
 
-      {/* Reserve Table Dialog */}
-      {showReserveDialog && selectedTableId && (
-        <div className="px-3 py-3 border-t border-border bg-accent/30 space-y-2">
-          <div className="text-[11px] font-semibold text-foreground">{lang === "zh" ? "预订桌位" : "Reserve Table"} #{tables.find(t => t.id === selectedTableId)?.number}</div>
-          <input
-            type="text"
-            placeholder={lang === "zh" ? "客户姓名（可选）" : "Customer name (optional)"}
-            value={reserveCustomerName}
-            onChange={e => setReserveCustomerName(e.target.value)}
-            className="w-full h-8 px-2.5 rounded-md bg-background border-1.5 border-border text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-all"
-          />
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground">{lang === "zh" ? "人数" : "Guests"}:</span>
-            {[1, 2, 3, 4, 5, 6, 8].map(n => (
-              <button
-                key={n}
-                onClick={() => setReserveGuestCount(n)}
-                className={cn(
-                  "w-7 h-7 rounded-md text-[11px] font-bold transition-colors",
-                  reserveGuestCount === n ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground"
-                )}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-1.5">
-            <Button variant="outline" size="sm" className="flex-1 text-[11px] h-8" onClick={() => { setShowReserveDialog(false); setReserveCustomerName(""); }}>
-              {t("cancel")}
-            </Button>
-            <Button size="sm" className="flex-1 text-[11px] h-8" onClick={() => {
-              onReserveTable?.(selectedTableId, reserveGuestCount, reserveCustomerName || undefined);
-              setShowReserveDialog(false);
-              setReserveCustomerName("");
-            }}>
-              {t("confirm")}
-            </Button>
-          </div>
-        </div>
+      {/* ReservationDialog */}
+      {showReserveDialog && selectedTableId && selectedTable && (
+        <ReservationDialog
+          table={selectedTable}
+          onConfirm={(data) => {
+            onReserveTable?.(selectedTableId, data);
+            setShowReserveDialog(false);
+          }}
+          onCancel={() => setShowReserveDialog(false)}
+        />
+      )}
+
+      {/* CancelReservationDialog */}
+      {showCancelDialog && selectedTableId && selectedTable && selectedReservation && (
+        <CancelReservationDialog
+          table={selectedTable}
+          reservation={selectedReservation}
+          onConfirm={(reason, note) => {
+            onCancelReservation?.(selectedTableId, reason, note);
+            setShowCancelDialog(false);
+          }}
+          onCancel={() => setShowCancelDialog(false)}
+        />
+      )}
+
+      {/* SeatReservationDialog */}
+      {showSeatDialog && selectedTableId && selectedTable && selectedReservation && (
+        <SeatReservationDialog
+          table={selectedTable}
+          reservation={selectedReservation}
+          onConfirm={(guestCount, customerId) => {
+            onSeatReserved?.(selectedTableId, guestCount, customerId);
+            setShowSeatDialog(false);
+          }}
+          onCancel={() => setShowSeatDialog(false)}
+        />
       )}
 
       {/* Quick Actions */}
-      {!isFullscreen && (
+      {!isFullscreen && viewMode === "floor" && (
         <div className="p-3 border-t border-border space-y-1.5">
           <Button variant="outline" size="sm" className="w-full justify-start gap-2 text-xs rounded-lg min-h-[44px]" onClick={() => onCreateWalkIn("takeaway")}>
             <ShoppingBag className="h-3.5 w-3.5" />{t("takeaway_order")}

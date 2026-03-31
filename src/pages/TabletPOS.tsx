@@ -6,7 +6,7 @@ import { CheckPanel } from "@/components/tablet/CheckPanel";
 import { PaymentSheet } from "@/components/tablet/PaymentSheet";
 import { OrderHistory } from "@/components/tablet/OrderHistory";
 import type { PaidOrder } from "@/components/tablet/history/types";
-import { tables as mockTables, sampleOrders, type Table, type Order, type OrderItem, type ServiceMode } from "@/data/mock-data";
+import { tables as mockTables, sampleOrders, reservations as mockReservations, type Table, type Order, type OrderItem, type ServiceMode, type Reservation, type CancelReason } from "@/data/mock-data";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useLanguage } from "@/hooks/useLanguage";
 import { getMenuItemsSnapshot } from "@/state/menu-store";
@@ -77,6 +77,7 @@ const TabletPOS: React.FC = () => {
   const [paidOrders, setPaidOrders] = useState<PaidOrder[]>(() => generateMockHistory());
   const [floorFullscreen, setFloorFullscreen] = useState(false);
   const [tableManagement, setTableManagement] = useState(true);
+  const [reservations, setReservations] = useState<Reservation[]>(mockReservations);
 
   // Resizable panel widths (as fractions of screen width)
   const [leftWidth, setLeftWidth] = useState(0.22); // ~288px on 1280 screen
@@ -154,7 +155,7 @@ const TabletPOS: React.FC = () => {
   }, [tables, orders]);
 
   // Seat reserved table guests
-  const handleSeatReserved = useCallback((tableId: string) => {
+  const handleSeatReserved = useCallback((tableId: string, guestCount: number, customerId?: string) => {
     const table = tables.find(t => t.id === tableId);
     if (!table || table.status !== "reserved") return;
     const newOrder: Order = {
@@ -164,21 +165,85 @@ const TabletPOS: React.FC = () => {
       serviceMode: "dine-in",
       items: [],
       status: "open",
-      guestCount: table.guestCount || 1,
+      guestCount,
       createdAt: new Date().toISOString(),
       subtotal: 0, serviceCharge: 0, gst: 0, total: 0,
+      customerId,
     };
     setCurrentOrder(newOrder);
     setOrders(prev => [...prev, newOrder]);
+    // Update table — clear reservation fields
     setTables(prev => prev.map(t =>
-      t.id === tableId ? { ...t, status: "ordering" as const, orderId: newOrder.id, elapsedMinutes: 0 } : t
+      t.id === tableId ? {
+        ...t,
+        status: "ordering" as const,
+        guestCount,
+        orderId: newOrder.id,
+        elapsedMinutes: 0,
+        reservationTime: undefined,
+        reservationPhone: undefined,
+        reservationNotes: undefined,
+      } : t
+    ));
+    // Update reservation status
+    setReservations(prev => prev.map(r =>
+      r.tableId === tableId && r.status === "pending"
+        ? { ...r, status: "seated" as const, customerId }
+        : r
     ));
   }, [tables]);
 
   // Reserve an available table
-  const handleReserveTable = useCallback((tableId: string, guestCount: number, customerName?: string) => {
+  const handleReserveTable = useCallback((tableId: string, data: { guestName: string; guestCount: number; phone?: string; reservationTime?: string; notes?: string }) => {
+    const table = tables.find(t => t.id === tableId);
+    if (!table) return;
+    // Create Reservation record
+    const newReservation: Reservation = {
+      id: `r-${Date.now()}`,
+      tableId,
+      tableNumber: table.number,
+      zone: table.zone,
+      guestName: data.guestName,
+      guestCount: data.guestCount,
+      phone: data.phone,
+      reservationTime: data.reservationTime,
+      createdAt: new Date().toISOString(),
+      status: "pending",
+      notes: data.notes,
+    };
+    setReservations(prev => [...prev, newReservation]);
+    // Update table
     setTables(prev => prev.map(t =>
-      t.id === tableId ? { ...t, status: "reserved" as const, guestCount, reservationName: customerName } : t
+      t.id === tableId ? {
+        ...t,
+        status: "reserved" as const,
+        guestCount: data.guestCount,
+        reservationName: data.guestName,
+        reservationTime: data.reservationTime,
+        reservationPhone: data.phone,
+        reservationNotes: data.notes,
+      } : t
+    ));
+    setCurrentOrder(null);
+  }, [tables]);
+
+  // Cancel a reservation
+  const handleCancelReservation = useCallback((tableId: string, reason: CancelReason, note?: string) => {
+    setReservations(prev => prev.map(r =>
+      r.tableId === tableId && r.status === "pending"
+        ? { ...r, status: (reason === "no-show" ? "no-show" : "cancelled") as Reservation["status"], cancelReason: reason, cancelNote: note }
+        : r
+    ));
+    setTables(prev => prev.map(t =>
+      t.id === tableId ? {
+        ...t,
+        status: "available" as const,
+        guestCount: undefined,
+        reservationName: undefined,
+        reservationTime: undefined,
+        reservationPhone: undefined,
+        reservationNotes: undefined,
+      } : t
     ));
     setCurrentOrder(null);
   }, []);
@@ -383,6 +448,8 @@ const TabletPOS: React.FC = () => {
               onToggleFullscreen={() => setFloorFullscreen(true)}
               onSeatReserved={handleSeatReserved}
               onReserveTable={handleReserveTable}
+              onCancelReservation={handleCancelReservation}
+              reservations={reservations}
             />
           </div>
           {/* Left drag handle */}
@@ -407,6 +474,8 @@ const TabletPOS: React.FC = () => {
           onToggleFullscreen={() => setFloorFullscreen(false)}
           onSeatReserved={handleSeatReserved}
           onReserveTable={handleReserveTable}
+          onCancelReservation={handleCancelReservation}
+          reservations={reservations}
         />
       )}
 
