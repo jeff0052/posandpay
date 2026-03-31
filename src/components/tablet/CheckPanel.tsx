@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { Minus, Plus, Trash2, Users, UtensilsCrossed, Tag, Percent, UserCheck, Split, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Minus, Plus, Trash2, Users, UtensilsCrossed, Tag, Percent, UserCheck, Split, X, ChevronDown, ChevronUp, ChefHat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type Order, type Table } from "@/data/mock-data";
+import { type ServiceFlow } from "@/state/settings-store";
 import { useLanguage } from "@/hooks/useLanguage";
 
 interface CheckPanelProps {
@@ -11,6 +12,8 @@ interface CheckPanelProps {
   onUpdateQuantity: (itemId: string, delta: number) => void;
   onRemoveItem: (itemId: string) => void;
   onPay: () => void;
+  serviceFlow?: ServiceFlow;
+  onSendToKitchen?: () => void;
 }
 
 // Mock promo/discount data
@@ -27,7 +30,7 @@ const discountPresets = [
   { label: "$10", value: 10, type: "fixed" as const },
 ];
 
-export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQuantity, onRemoveItem, onPay }) => {
+export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQuantity, onRemoveItem, onPay, serviceFlow = "restaurant", onSendToKitchen }) => {
   const { t } = useLanguage();
   const [promoCode, setPromoCode] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<typeof availablePromos[0] | null>(null);
@@ -338,15 +341,27 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
             <span className="font-mono">${splitAmount.toFixed(2)}</span>
           </div>
         )}
-        <Button
-          variant="pay"
-          size="xl"
-          className="w-full mt-2 rounded-lg"
-          disabled={order.items.length === 0}
-          onClick={onPay}
-        >
-          {t("pay")} ${finalTotal.toFixed(2)}
-        </Button>
+        {serviceFlow === "restaurant" && order.status === "open" && order.items.length > 0 ? (
+          <Button
+            variant="default"
+            size="xl"
+            className="w-full mt-2 rounded-lg"
+            onClick={onSendToKitchen}
+          >
+            <ChefHat className="h-4 w-4 mr-2" />
+            {t("send_to_kitchen")}
+          </Button>
+        ) : (
+          <Button
+            variant="pay"
+            size="xl"
+            className="w-full mt-2 rounded-lg"
+            disabled={order.items.length === 0}
+            onClick={onPay}
+          >
+            {t("pay")} ${finalTotal.toFixed(2)}
+          </Button>
+        )}
       </div>
     </div>
   );
