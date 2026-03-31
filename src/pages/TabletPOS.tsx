@@ -258,6 +258,20 @@ const TabletPOS: React.FC = () => {
     updateOrderStatus(firedOrder.id, "sent");
   }, [currentOrder]);
 
+  // Void an order
+  const handleVoidOrder = useCallback(() => {
+    if (!currentOrder) return;
+    const voidedOrder: Order = { ...currentOrder, status: "void" as const };
+    setCurrentOrder(null);
+    setOrders(prev => prev.map(o => o.id === voidedOrder.id ? voidedOrder : o));
+    if (voidedOrder.tableId) {
+      setTables(prev => prev.map(t =>
+        t.id === voidedOrder.tableId ? { ...t, status: "available" as const, guestCount: undefined, orderId: undefined, openAmount: undefined, elapsedMinutes: undefined } : t
+      ));
+    }
+    updateOrderStatus(voidedOrder.id, "void");
+  }, [currentOrder]);
+
   const handleCreateWalkIn = useCallback((mode: ServiceMode) => {
     const newOrder: Order = {
       id: `o-${Date.now()}`,
@@ -605,6 +619,7 @@ const TabletPOS: React.FC = () => {
                   onPay={() => setShowPayment(true)}
                   serviceFlow={settings.serviceFlow}
                   onSendToKitchen={handleSendToKitchen}
+                  onVoidOrder={handleVoidOrder}
                 />
               ) : (
                 <OrderHistory orders={paidOrders} onClose={() => setShowHistory(false)} />
