@@ -6,6 +6,43 @@ import { cn } from "@/lib/utils";
 
 type Period = "today" | "7d" | "30d";
 
+const generateMockSalesOrders = () => {
+  const modes = ["dine-in", "takeaway", "delivery", "kiosk", "qr"];
+  const statuses = ["paid", "paid", "paid", "paid", "void"]; // 80% paid
+  const itemNames = ["Chicken Rice", "Laksa", "Char Kway Teow", "Nasi Lemak", "Satay", "Bak Kut Teh", "Hokkien Mee"];
+  const orders: any[] = [];
+  const now = Date.now();
+  for (let d = 0; d < 7; d++) {
+    const ordersPerDay = 15 + Math.floor(Math.random() * 20);
+    for (let i = 0; i < ordersPerDay; i++) {
+      const hour = 8 + Math.floor(Math.random() * 13); // 8am to 9pm
+      const minute = Math.floor(Math.random() * 60);
+      const date = new Date(now - d * 86400000);
+      date.setHours(hour, minute, 0, 0);
+      const total = 8 + Math.random() * 80;
+      const itemName = itemNames[Math.floor(Math.random() * itemNames.length)];
+      const itemPrice = 5 + Math.random() * 15;
+      const itemQty = 1 + Math.floor(Math.random() * 3);
+      const items = [
+        { menu_item_id: itemName.toLowerCase().replace(/\s+/g, "-"), name: itemName, quantity: itemQty, price: Math.round(itemPrice * 100) / 100 },
+      ];
+      const mode = modes[Math.floor(Math.random() * modes.length)];
+      orders.push({
+        id: `mock-${d}-${i}`,
+        created_at: date.toISOString(),
+        status: statuses[Math.floor(Math.random() * statuses.length)],
+        total: Math.round(total * 100) / 100,
+        service_mode: mode,
+        table_number: mode === "dine-in" ? String(1 + Math.floor(Math.random() * 15)) : null,
+        guest_count: 1 + Math.floor(Math.random() * 6),
+        items,
+      });
+    }
+  }
+  return orders;
+};
+const MOCK_SALES_ORDERS = generateMockSalesOrders();
+
 const CHANNEL_COLORS = [
   "hsl(221, 63%, 33%)",   // primary - dine-in
   "hsl(142, 60%, 45%)",   // green - takeaway
@@ -48,7 +85,8 @@ const AdminSales: React.FC = () => {
     setLoading(true);
     const [from, to] = getRange(period);
     fetchOrdersInRange(from, to).then(data => {
-      setOrders(data);
+      // If Supabase returned empty, use mock data
+      setOrders(data.length > 0 ? data : MOCK_SALES_ORDERS);
       setLoading(false);
     });
   }, [period]);

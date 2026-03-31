@@ -16,6 +16,18 @@ interface KDSTicket {
   modifiers: { name: string; price: number }[];
 }
 
+const MOCK_TICKETS: KDSTicket[] = [
+  { id: "k1", name: "Chicken Rice", quantity: 2, status: "new", notes: null, fired_at: new Date(Date.now() - 3 * 60000).toISOString(), combo_items: null, orderId: "ORD-2404", tableNumber: "12", serviceMode: "dine-in", modifiers: [] },
+  { id: "k2", name: "Laksa", quantity: 1, status: "new", notes: "Extra spicy", fired_at: new Date(Date.now() - 5 * 60000).toISOString(), combo_items: null, orderId: "ORD-2404", tableNumber: "12", serviceMode: "dine-in", modifiers: [] },
+  { id: "k3", name: "Satay (10pc)", quantity: 1, status: "new", notes: null, fired_at: new Date(Date.now() - 2 * 60000).toISOString(), combo_items: null, orderId: "ORD-2409", tableNumber: "10", serviceMode: "dine-in", modifiers: [{ name: "Extra Peanut Sauce", price: 0 }] },
+  { id: "k4", name: "Char Kway Teow", quantity: 1, status: "preparing", notes: null, fired_at: new Date(Date.now() - 8 * 60000).toISOString(), combo_items: null, orderId: "ORD-2405", tableNumber: null, serviceMode: "delivery", modifiers: [] },
+  { id: "k5", name: "Nasi Lemak Set", quantity: 2, status: "preparing", notes: null, fired_at: new Date(Date.now() - 12 * 60000).toISOString(), combo_items: null, orderId: "ORD-2409", tableNumber: "10", serviceMode: "dine-in", modifiers: [] },
+  { id: "k6", name: "Bak Kut Teh", quantity: 1, status: "preparing", notes: "Less pepper", fired_at: new Date(Date.now() - 10 * 60000).toISOString(), combo_items: null, orderId: "ORD-2404", tableNumber: "12", serviceMode: "dine-in", modifiers: [] },
+  { id: "k7", name: "Prawn Crackers", quantity: 3, status: "ready", notes: null, fired_at: new Date(Date.now() - 15 * 60000).toISOString(), combo_items: null, orderId: "ORD-2402", tableNumber: "7", serviceMode: "dine-in", modifiers: [] },
+  { id: "k8", name: "Teh Tarik", quantity: 2, status: "ready", notes: null, fired_at: new Date(Date.now() - 14 * 60000).toISOString(), combo_items: null, orderId: "ORD-2405", tableNumber: null, serviceMode: "delivery", modifiers: [] },
+  { id: "k9", name: "Hokkien Mee", quantity: 1, status: "new", notes: null, fired_at: new Date(Date.now() - 1 * 60000).toISOString(), combo_items: null, orderId: "ORD-2406", tableNumber: "1", serviceMode: "dine-in", modifiers: [] },
+];
+
 const statusConfig: Record<string, { label: string; border: string; bg: string; text: string; icon: React.FC<{ className?: string }> }> = {
   new: { label: "NEW", border: "border-primary", bg: "bg-status-blue-light", text: "text-primary", icon: Clock },
   preparing: { label: "PREPARING", border: "border-status-amber", bg: "bg-status-amber-light", text: "text-status-amber", icon: ChefHat },
@@ -36,7 +48,7 @@ const AdminKDS: React.FC = () => {
       .select("id, table_number, service_mode")
       .not("status", "in", '("paid","void")');
 
-    if (!orders || orders.length === 0) { setTickets([]); return; }
+    if (!orders || orders.length === 0) { setTickets(MOCK_TICKETS); return; }
 
     const orderIds = orders.map(o => o.id);
     const orderMap = new Map(orders.map(o => [o.id, o]));
@@ -47,7 +59,7 @@ const AdminKDS: React.FC = () => {
       .in("order_id", orderIds)
       .neq("status", "served");
 
-    if (!items || items.length === 0) { setTickets([]); return; }
+    if (!items || items.length === 0) { setTickets(MOCK_TICKETS); return; }
 
     const itemIds = items.map(i => i.id);
     const { data: mods } = await supabase
