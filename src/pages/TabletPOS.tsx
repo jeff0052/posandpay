@@ -124,28 +124,8 @@ const TabletPOS: React.FC = () => {
       const order = orders.find(o => o.id === table.orderId);
       setCurrentOrder(order || null);
     } else if (table?.status === "available") {
-      const newOrder: Order = {
-        id: `o-${Date.now()}`,
-        tableId,
-        tableNumber: table.number,
-        serviceMode: "dine-in",
-        items: [],
-        status: "open",
-        guestCount: 1,
-        createdAt: new Date().toISOString(),
-        subtotal: 0, serviceCharge: 0, gst: 0, total: 0,
-      };
-      setCurrentOrder(newOrder);
-      setOrders(prev => [...prev, newOrder]);
-      setTables(prev => prev.map(t =>
-        t.id === tableId ? { ...t, status: "ordering" as const, guestCount: 1, orderId: newOrder.id, elapsedMinutes: 0 } : t
-      ));
-      // Persist to DB
-      insertOrder({
-        id: newOrder.id, table_id: tableId, table_number: table.number,
-        service_mode: "dine-in", status: "open", guest_count: 1,
-        subtotal: 0, service_charge: 0, gst: 0, total: 0,
-      });
+      // Don't auto-create order — let user choose to reserve or start ordering via menu
+      setCurrentOrder(null);
     } else if (table?.status === "reserved") {
       // Reserved table selected — don't create order yet, just select
       setCurrentOrder(null);
@@ -275,6 +255,54 @@ const TabletPOS: React.FC = () => {
   };
 
   const handleAddItem = useCallback((menuItemId: string, modifiers: { name: string; price: number }[], notes?: string, comboItems?: { name: string; groupName: string }[]) => {
+    // Auto-create order when adding first item to an available table
+    if (!currentOrder && selectedTableId) {
+      const table = tables.find(t => t.id === selectedTableId);
+      if (table?.status === "available") {
+        const newOrder: Order = {
+          id: `o-${Date.now()}`,
+          tableId: selectedTableId,
+          tableNumber: table.number,
+          serviceMode: "dine-in",
+          items: [],
+          status: "open",
+          guestCount: 1,
+          createdAt: new Date().toISOString(),
+          subtotal: 0, serviceCharge: 0, gst: 0, total: 0,
+        };
+        setCurrentOrder(newOrder);
+        setOrders(prev => [...prev, newOrder]);
+        setTables(prev => prev.map(t =>
+          t.id === selectedTableId ? { ...t, status: "ordering" as const, guestCount: 1, orderId: newOrder.id, elapsedMinutes: 0 } : t
+        ));
+        insertOrder({
+          id: newOrder.id, table_id: selectedTableId, table_number: table.number,
+          service_mode: "dine-in", status: "open", guest_count: 1,
+          subtotal: 0, service_charge: 0, gst: 0, total: 0,
+        });
+        // Will add the item on next render via effect — for now return
+        // Actually, set the item directly on the new order
+        const menuItemData = getMenuItemsSnapshot().find(m => m.id === menuItemId);
+        if (menuItemData) {
+          const newItem: OrderItem = {
+            id: `oi-${Date.now()}`,
+            menuItemId,
+            name: menuItemData.name,
+            price: menuItemData.price,
+            quantity: 1,
+            modifiers,
+            notes,
+            status: "new",
+            comboItems,
+          };
+          const totals = recalcOrder([newItem]);
+          const orderWithItem = { ...newOrder, items: [newItem], ...totals };
+          setCurrentOrder(orderWithItem);
+          setOrders(prev => prev.map(o => o.id === newOrder.id ? orderWithItem : o));
+        }
+        return;
+      }
+    }
     if (!currentOrder) return;
     const menuItem = getMenuItemsSnapshot().find(m => m.id === menuItemId);
     if (!menuItem) return;
@@ -308,7 +336,7 @@ const TabletPOS: React.FC = () => {
         t.id === selectedTableId && t.status === "ordering" ? { ...t, openAmount: undefined } : t
       ));
     }
-  }, [currentOrder, selectedTableId]);
+  }, [currentOrder, selectedTableId, tables]);
 
   const handleUpdateQuantity = useCallback((itemId: string, delta: number) => {
     setCurrentOrder(prev => {
