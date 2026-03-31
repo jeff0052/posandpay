@@ -145,6 +145,13 @@
     user-select: none;
     overflow: hidden;
     touch-action: manipulation;
+    /* Subtle dot pattern on background — inspired by tailwindcss.com */
+    background-image: radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .dark body {
+    background-image: radial-gradient(circle, hsl(var(--border) / 0.4) 1px, transparent 1px);
+    background-size: 24px 24px;
   }
 
   /* Disable zoom on tablet */
@@ -271,6 +278,59 @@
   }
   .page-enter {
     animation: fadeUp 0.28s ease;
+  }
+
+  /* ── Background patterns (Tailwind-inspired) ── */
+
+  /* Dot grid pattern — default on body, also available as utility */
+  .pattern-dots {
+    background-image: radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .dark .pattern-dots {
+    background-image: radial-gradient(circle, hsl(var(--border) / 0.4) 1px, transparent 1px);
+  }
+
+  /* Finer dot grid for cards/panels */
+  .pattern-dots-fine {
+    background-image: radial-gradient(circle, hsl(var(--border) / 0.5) 0.5px, transparent 0.5px);
+    background-size: 16px 16px;
+  }
+  .dark .pattern-dots-fine {
+    background-image: radial-gradient(circle, hsl(var(--border) / 0.3) 0.5px, transparent 0.5px);
+  }
+
+  /* Cross/plus pattern */
+  .pattern-cross {
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .dark .pattern-cross {
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.15) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.15) 1px, transparent 1px);
+  }
+
+  /* Diagonal lines pattern */
+  .pattern-diagonal {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 10px,
+      hsl(var(--border) / 0.25) 10px,
+      hsl(var(--border) / 0.25) 11px
+    );
+  }
+  .dark .pattern-diagonal {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 10px,
+      hsl(var(--border) / 0.12) 10px,
+      hsl(var(--border) / 0.12) 11px
+    );
   }
 
   /* ── Gemini-inspired enhancements ── */

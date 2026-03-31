@@ -133,7 +133,7 @@ const AdminLayout: React.FC = () => {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pattern-dots">
           <div className="page-enter">
             <Outlet />
           </div>

@@ -244,7 +244,7 @@ const KitchenDisplay: React.FC = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-background pattern-cross">
       {/* Header */}
       <header className="h-14 bg-card border-b border-border flex items-center px-4 gap-3 shrink-0">
         <Link to="/" className="p-2 rounded-lg hover:bg-accent text-muted-foreground">
