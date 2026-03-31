@@ -8,6 +8,7 @@ import { QRPayment } from "@/components/qr/QRPayment";
 import { QRComplete } from "@/components/qr/QRComplete";
 import { useSettings } from "@/state/settings-store";
 import { updateCustomer, type CustomerFull } from "@/state/customer-store";
+import { insertOrder, insertOrderItems } from "@/lib/db-orders";
 
 type Screen = "table" | "auth" | "menu" | "cart" | "payment" | "complete";
 
@@ -54,10 +55,45 @@ const QROrdering: React.FC = () => {
     return `QR${Date.now().toString(36).slice(-4).toUpperCase()}`;
   };
 
-  const finalizeOrder = (paid: boolean) => {
+  const finalizeOrder = async (paid: boolean) => {
     const num = generateOrderNumber();
     setOrderNumber(num);
     setIsPaid(paid);
+
+    // Persist to database
+    const orderId = `qr-${Date.now()}`;
+    await insertOrder({
+      id: orderId,
+      table_number: tableNumber,
+      service_mode: "qr",
+      status: paid ? "paid" : "open",
+      guest_count: 1,
+      subtotal,
+      service_charge: sc,
+      gst,
+      total,
+      customer_id: customer?.id || undefined,
+    });
+
+    const items = cart.map((item, idx) => ({
+      id: `${orderId}-i${idx}`,
+      order_id: orderId,
+      menu_item_id: item.menuItemId,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      status: "new",
+    }));
+
+    const modifiers = cart.flatMap((item, idx) =>
+      item.modifiers.map(m => ({
+        order_item_id: `${orderId}-i${idx}`,
+        name: m.name,
+        price: m.price,
+      }))
+    );
+
+    await insertOrderItems(items, modifiers);
 
     // Award points to member (1 point per $1)
     if (customer) {

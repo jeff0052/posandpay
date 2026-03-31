@@ -11,6 +11,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useLanguage } from "@/hooks/useLanguage";
 import { getMenuItemsSnapshot } from "@/state/menu-store";
 import { cn } from "@/lib/utils";
+import { insertOrder, insertOrderItems, updateOrderStatus, updateOrderTotals } from "@/lib/db-orders";
 
 // Generate 30 mock historical orders for demo
 const generateMockHistory = (): PaidOrder[] => {
@@ -138,6 +139,12 @@ const TabletPOS: React.FC = () => {
       setTables(prev => prev.map(t =>
         t.id === tableId ? { ...t, status: "ordering" as const, guestCount: 1, orderId: newOrder.id, elapsedMinutes: 0 } : t
       ));
+      // Persist to DB
+      insertOrder({
+        id: newOrder.id, table_id: tableId, table_number: table.number,
+        service_mode: "dine-in", status: "open", guest_count: 1,
+        subtotal: 0, service_charge: 0, gst: 0, total: 0,
+      });
     } else if (table?.status === "reserved") {
       // Reserved table selected — don't create order yet, just select
       setCurrentOrder(null);
@@ -260,7 +267,7 @@ const TabletPOS: React.FC = () => {
 
   const paymentMethods = ["Visa", "Mastercard", "UnionPay", "Alipay", "WeChat Pay", "PayNow", "Cash"];
 
-  const handlePaymentComplete = useCallback((method?: string, cashReceived?: number) => {
+  const handlePaymentComplete = useCallback(async (method?: string, cashReceived?: number) => {
     if (currentOrder) {
       const isCash = method === "Cash";
       const changeDue = isCash && cashReceived ? cashReceived - currentOrder.total : undefined;
@@ -284,6 +291,9 @@ const TabletPOS: React.FC = () => {
         changeDue,
       };
       setPaidOrders(prev => [paid, ...prev]);
+
+      // Persist payment to DB
+      await updateOrderStatus(currentOrder.id, "paid");
     }
     setShowPayment(false);
     if (currentOrder?.tableId) {

@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React from "react";
 import { Building2, CreditCard, Globe, Bell, QrCode, Monitor } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSettings, updateSettings, type QRPaymentMode } from "@/state/settings-store";
+import { Switch } from "@/components/ui/switch";
 
 const AdminSettings: React.FC = () => {
   const settings = useSettings();
@@ -64,14 +65,10 @@ const AdminSettings: React.FC = () => {
                   <h3 className="font-semibold text-foreground text-[13px]">QR Table Ordering</h3>
                   <p className="text-[11px] text-muted-foreground mt-0.5">Customers scan QR code to order from their table</p>
                 </div>
-                <button
-                  onClick={() => updateSettings({ qrEnabled: !settings.qrEnabled })}
-                  className={cn("w-11 h-6 rounded-full transition-all relative",
-                    settings.qrEnabled ? "bg-primary" : "bg-border")}
-                >
-                  <span className={cn("absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform",
-                    settings.qrEnabled ? "translate-x-[22px]" : "translate-x-0.5")} />
-                </button>
+                <Switch
+                  checked={settings.qrEnabled}
+                  onCheckedChange={(checked) => updateSettings({ qrEnabled: checked })}
+                />
               </div>
 
               {settings.qrEnabled && (
@@ -107,14 +104,10 @@ const AdminSettings: React.FC = () => {
                   <h3 className="font-semibold text-foreground text-[13px]">Kiosk Self-Ordering</h3>
                   <p className="text-[11px] text-muted-foreground mt-0.5">Touch screen self-service ordering with collection numbers</p>
                 </div>
-                <button
-                  onClick={() => updateSettings({ kioskEnabled: !settings.kioskEnabled })}
-                  className={cn("w-11 h-6 rounded-full transition-all relative",
-                    settings.kioskEnabled ? "bg-primary" : "bg-border")}
-                >
-                  <span className={cn("absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform",
-                    settings.kioskEnabled ? "translate-x-[22px]" : "translate-x-0.5")} />
-                </button>
+                <Switch
+                  checked={settings.kioskEnabled}
+                  onCheckedChange={(checked) => updateSettings({ kioskEnabled: checked })}
+                />
               </div>
 
               {settings.kioskEnabled && (

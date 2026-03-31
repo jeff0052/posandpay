@@ -5,6 +5,7 @@ import { MobileMenuScreen } from "@/components/mobile/MobileMenuScreen";
 import { MobileReviewScreen } from "@/components/mobile/MobileReviewScreen";
 import { MobilePaymentSheet } from "@/components/mobile/MobilePaymentSheet";
 import { tables as mockTables, menuItems, type Table, type OrderItem, type ServiceMode } from "@/data/mock-data";
+import { insertOrder, insertOrderItems, updateOrderStatus } from "@/lib/db-orders";
 
 type MobileStep = "tables" | "dining" | "menu" | "review" | "payment";
 
@@ -13,12 +14,13 @@ const MobilePOS: React.FC = () => {
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [serviceMode, setServiceMode] = useState<ServiceMode>("dine-in");
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+  const [orderId] = useState(() => `mob-${Date.now()}`);
 
   const recalc = (items: OrderItem[]) => {
     const subtotal = items.reduce((s, i) => s + (i.price + i.modifiers.reduce((ms, m) => ms + m.price, 0)) * i.quantity, 0);
     const sc = subtotal * 0.1;
     const gst = (subtotal + sc) * 0.09;
-    return { subtotal, serviceCharge: sc, gst, total: subtotal + sc + gst };
+    return { subtotal: Math.round(subtotal * 100) / 100, serviceCharge: Math.round(sc * 100) / 100, gst: Math.round(gst * 100) / 100, total: Math.round((subtotal + sc + gst) * 100) / 100 };
   };
 
   const handleSelectTable = (table: Table) => {
@@ -48,7 +50,44 @@ const MobilePOS: React.FC = () => {
     setOrderItems(prev => prev.map(i => i.id === id ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i).filter(i => i.quantity > 0));
   };
 
-  const handlePaymentComplete = () => {
+  const handlePaymentComplete = async () => {
+    const totals = recalc(orderItems);
+
+    // Persist order to DB
+    await insertOrder({
+      id: orderId,
+      table_id: selectedTable?.id,
+      table_number: selectedTable?.number,
+      service_mode: serviceMode,
+      status: "paid",
+      guest_count: 1,
+      subtotal: totals.subtotal,
+      service_charge: totals.serviceCharge,
+      gst: totals.gst,
+      total: totals.total,
+    });
+
+    const items = orderItems.map((item, idx) => ({
+      id: `${orderId}-i${idx}`,
+      order_id: orderId,
+      menu_item_id: item.menuItemId,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      status: "new",
+      notes: item.notes,
+    }));
+
+    const mods = orderItems.flatMap((item, idx) =>
+      item.modifiers.map(m => ({
+        order_item_id: `${orderId}-i${idx}`,
+        name: m.name,
+        price: m.price,
+      }))
+    );
+
+    await insertOrderItems(items, mods);
+
     setStep("tables");
     setSelectedTable(null);
     setOrderItems([]);
