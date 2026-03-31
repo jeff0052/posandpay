@@ -26,6 +26,7 @@ The current POS system has a basic reserve button on available tables, but the r
 - Multi-day reservation management
 - Waitlist integration (separate existing feature)
 - QR/Kiosk flow changes
+- Mobile interface changes (deferred to follow-up iteration; tablet-first)
 
 ## 4. Data Model
 
@@ -138,13 +139,14 @@ Store as exported `reservations: Reservation[]` array alongside existing `tables
 - Actual Guest Count (editable number, pre-filled from reservation)
 - Member Association section:
   - Phone/member ID search input
-  - Search button -> shows match result (name, member tier, discount %)
+  - Search button -> uses `findByPhone()` from `customer-store.ts` (returns `CustomerFull`)
+  - Shows match result: name, member tier (gold/silver/bronze)
   - "Link Member" / "Skip" buttons
 - Cancel / Seat & Order buttons
 
 **On Confirm:**
 1. Update Reservation: `status = "seated"`, set `customerId` if member linked
-2. Update table: `status = "ordering"`, update `guestCount` to actual count
+2. Update table: `status = "ordering"`, update `guestCount` to actual count, clear reservation fields (`reservationTime`, `reservationPhone`, `reservationNotes`; keep `reservationName` for order reference)
 3. Create new Order:
    - `tableId`, `tableNumber` from table
    - `serviceMode = "dine-in"`
@@ -167,7 +169,10 @@ Store as exported `reservations: Reservation[]` array alongside existing `tables
 - Table number + zone
 - Guest name + count
 - Status badge (color-coded: blue=pending, green=seated, red=cancelled)
-- Click -> switches to Floor Plan view and highlights/selects that table
+- Click behavior per status:
+  - **pending**: switch to Floor Plan, select table, show action panel (Cancel/Seat buttons)
+  - **seated**: switch to Floor Plan, select table, load active order
+  - **cancelled/no-show**: no action (greyed out row, informational only)
 
 **Empty State:** "No reservations today" message
 
@@ -181,16 +186,15 @@ All placed in `src/components/tablet/`:
 |-----------|-------|---------|
 | `ReservationDialog.tsx` | `table: Table`, `onConfirm(reservation)`, `onCancel()` | Full reservation form |
 | `CancelReservationDialog.tsx` | `table: Table`, `reservation: Reservation`, `onConfirm(reason, note)`, `onCancel()` | Cancel with reason |
-| `SeatReservationDialog.tsx` | `table: Table`, `reservation: Reservation`, `customers: Customer[]`, `onConfirm(guestCount, customerId?)`, `onCancel()` | Confirm seating + member link |
-| `ReservationListPanel.tsx` | `reservations: Reservation[]`, `onSelectReservation(id)` | Today's reservation list |
+| `SeatReservationDialog.tsx` | `table: Table`, `reservation: Reservation`, `onConfirm(guestCount, customerId?)`, `onCancel()` | Confirm seating + member link (uses `findByPhone()` from `customer-store.ts` internally) |
+| `ReservationListPanel.tsx` | `reservations: Reservation[]`, `tables: Table[]`, `onSelectReservation(reservationId, tableId)` | Today's reservation list |
 
 ### 6.2 Modified Components
 
 | Component | Changes |
 |-----------|---------|
-| `FloorPanel.tsx` | Replace inline reserve dialog with ReservationDialog; add Cancel button for reserved tables; enhance Seat button to open SeatReservationDialog; add Reservations tab toggle; integrate ReservationListPanel |
-| `MobileTablesScreen.tsx` | Mirror reserve/cancel/seat dialogs for mobile layout |
-| `TabletPOS.tsx` | Handle `onSeatReserved` callback to create order with customerId; manage reservations state array |
+| `FloorPanel.tsx` | Replace inline reserve dialog with ReservationDialog; add Cancel button for reserved tables; enhance Seat button to open SeatReservationDialog; add Reservations tab toggle; integrate ReservationListPanel. **Implementation note:** the `showActions` guard (line ~97) must be extended to include `"reserved"` status so the action panel renders for reserved tables. |
+| `TabletPOS.tsx` | Handle updated `onSeatReserved(tableId, guestCount, customerId?)` callback to create order with customerId; manage reservations state array |
 
 ### 6.3 State Management
 
@@ -251,4 +255,3 @@ available ──[Reserve]──> reserved (Reservation: pending)
 - Seat flow: reserved -> ordering with/without member
 - Reservation list: filter by status, click-to-navigate
 - Edge: attempt reserve on non-available table (should be blocked)
-- Mobile: same flows work on MobileTablesScreen
