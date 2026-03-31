@@ -18,6 +18,9 @@ export interface Table {
   orderId?: string;
   mergedWith?: string[]; // IDs of tables merged with this one
   reservationName?: string;
+  reservationTime?: string;
+  reservationPhone?: string;
+  reservationNotes?: string;
 }
 
 export interface MenuItem {
@@ -103,19 +106,39 @@ export interface Customer {
   lastVisit: string;
 }
 
+export type ReservationStatus = "pending" | "seated" | "cancelled" | "no-show";
+export type CancelReason = "no-show" | "customer-cancel" | "other";
+
+export interface Reservation {
+  id: string;
+  tableId: string;
+  tableNumber: string;
+  zone: string;
+  guestName: string;
+  guestCount: number;
+  phone?: string;
+  reservationTime?: string;
+  createdAt: string;
+  status: ReservationStatus;
+  cancelReason?: CancelReason;
+  cancelNote?: string;
+  notes?: string;
+  customerId?: string;
+}
+
 export const zones = ["Main Hall", "Patio", "Private", "Bar"];
 
 export const tables: Table[] = [
   { id: "t1", number: "1", zone: "Main Hall", seats: 2, status: "available" },
   { id: "t2", number: "2", zone: "Main Hall", seats: 4, status: "ordered", guestCount: 3, server: "Sarah", openAmount: 45.80, elapsedMinutes: 25, orderId: "o1" },
   { id: "t3", number: "3", zone: "Main Hall", seats: 4, status: "ordered", guestCount: 4, server: "Mike", openAmount: 78.50, elapsedMinutes: 42, orderId: "o2" },
-  { id: "t4", number: "4", zone: "Main Hall", seats: 6, status: "reserved", guestCount: 5 },
+  { id: "t4", number: "4", zone: "Main Hall", seats: 6, status: "reserved", guestCount: 5, reservationName: "Mr. Chen", reservationPhone: "91234567", reservationTime: new Date(new Date().setHours(19, 0, 0, 0)).toISOString() },
   { id: "t5", number: "5", zone: "Main Hall", seats: 2, status: "available" },
   { id: "t6", number: "6", zone: "Main Hall", seats: 4, status: "dirty" },
   { id: "t7", number: "7", zone: "Patio", seats: 2, status: "available" },
   { id: "t8", number: "8", zone: "Patio", seats: 4, status: "ordering", guestCount: 2, server: "Sarah", openAmount: 0, elapsedMinutes: 3, orderId: "o5" },
   { id: "t9", number: "9", zone: "Patio", seats: 6, status: "available" },
-  { id: "t10", number: "10", zone: "Private", seats: 8, status: "reserved", guestCount: 8 },
+  { id: "t10", number: "10", zone: "Private", seats: 8, status: "reserved", guestCount: 8, reservationName: "Mrs. Tan", reservationPhone: "98765432" },
   { id: "t11", number: "11", zone: "Private", seats: 10, status: "available" },
   { id: "t12", number: "12", zone: "Bar", seats: 2, status: "ordered", guestCount: 1, server: "Mike", openAmount: 18.00, elapsedMinutes: 10, orderId: "o4" },
   { id: "t13", number: "13", zone: "Bar", seats: 2, status: "available" },
@@ -123,7 +146,15 @@ export const tables: Table[] = [
   { id: "t15", number: "15", zone: "Main Hall", seats: 8, status: "available" },
   { id: "t16", number: "16", zone: "Main Hall", seats: 2, status: "ordering", guestCount: 2, server: "Sarah", elapsedMinutes: 1 },
   { id: "t17", number: "17", zone: "Patio", seats: 4, status: "available" },
-  { id: "t18", number: "18", zone: "Private", seats: 12, status: "reserved", guestCount: 10 },
+  { id: "t18", number: "18", zone: "Private", seats: 12, status: "reserved", guestCount: 10, reservationName: "Lee Family", reservationPhone: "92223333", reservationTime: new Date(new Date().setHours(20, 0, 0, 0)).toISOString(), reservationNotes: "Birthday dinner" },
+];
+
+export const reservations: Reservation[] = [
+  { id: "r1", tableId: "t4", tableNumber: "4", zone: "Main Hall", guestName: "Mr. Chen", guestCount: 5, phone: "91234567", reservationTime: new Date(new Date().setHours(19, 0, 0, 0)).toISOString(), createdAt: new Date(new Date().setHours(10, 0, 0, 0)).toISOString(), status: "pending" },
+  { id: "r2", tableId: "t10", tableNumber: "10", zone: "Private", guestName: "Mrs. Tan", guestCount: 8, phone: "98765432", createdAt: new Date(new Date().setHours(11, 30, 0, 0)).toISOString(), status: "pending" },
+  { id: "r3", tableId: "t18", tableNumber: "18", zone: "Private", guestName: "Lee Family", guestCount: 10, phone: "92223333", reservationTime: new Date(new Date().setHours(20, 0, 0, 0)).toISOString(), createdAt: new Date(new Date().setHours(9, 0, 0, 0)).toISOString(), status: "pending", notes: "Birthday dinner" },
+  { id: "r4", tableId: "t5", tableNumber: "5", zone: "Main Hall", guestName: "David Wong", guestCount: 2, phone: "93334444", createdAt: new Date(new Date().setHours(12, 0, 0, 0)).toISOString(), status: "seated", customerId: "c1" },
+  { id: "r5", tableId: "t7", tableNumber: "7", zone: "Patio", guestName: "Sarah Lim", guestCount: 2, createdAt: new Date(new Date().setHours(11, 0, 0, 0)).toISOString(), status: "cancelled", cancelReason: "customer-cancel" },
 ];
 
 export const categories = [
