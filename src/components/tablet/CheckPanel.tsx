@@ -1,10 +1,9 @@
 import React, { useState } from "react";
-import { Minus, Plus, Trash2, Users, UtensilsCrossed, Tag, Percent, UserCheck, Split, X, ChevronDown, ChevronUp, ChefHat, Ban } from "lucide-react";
+import { Minus, Plus, Trash2, Users, UtensilsCrossed, Split, X, ChefHat, Ban, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type Order, type Table } from "@/data/mock-data";
 import { type ServiceFlow } from "@/state/settings-store";
-import { getTierDiscount } from "@/state/membership-store";
 import { useLanguage } from "@/hooks/useLanguage";
 
 interface CheckPanelProps {
@@ -16,33 +15,15 @@ interface CheckPanelProps {
   serviceFlow?: ServiceFlow;
   onSendToKitchen?: () => void;
   onVoidOrder?: () => void;
-  memberTierId?: string;
+  linkedMember?: { name: string; tier: string; discountPercent: number } | null;
 }
 
-// Mock promo/discount data
-const availablePromos = [
-  { code: "LUNCH20", label: "Lunch 20% Off", type: "percentage" as const, value: 20, minSpend: 30 },
-  { code: "SAVE5", label: "$5 Off", type: "fixed" as const, value: 5, minSpend: 20 },
-  { code: "NEWUSER", label: "New Customer 15%", type: "percentage" as const, value: 15, minSpend: 0 },
-];
-
-const discountPresets = [
-  { label: "10%", value: 10, type: "percentage" as const },
-  { label: "20%", value: 20, type: "percentage" as const },
-  { label: "$5", value: 5, type: "fixed" as const },
-  { label: "$10", value: 10, type: "fixed" as const },
-];
-
-export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQuantity, onRemoveItem, onPay, serviceFlow = "restaurant", onSendToKitchen, onVoidOrder, memberTierId }) => {
+export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQuantity, onRemoveItem, onPay, serviceFlow = "restaurant", onSendToKitchen, onVoidOrder, linkedMember }) => {
   const { t } = useLanguage();
-  const [promoCode, setPromoCode] = useState("");
-  const [appliedPromo, setAppliedPromo] = useState<typeof availablePromos[0] | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{ type: "percentage" | "fixed"; value: number; label: string } | null>(null);
   const [manualDiscount, setManualDiscount] = useState<{ type: "percentage" | "fixed"; value: number } | null>(null);
-  const [memberDetected, setMemberDetected] = useState(false);
-  const [showPromoSection, setShowPromoSection] = useState(false);
   const [splitCount, setSplitCount] = useState(1);
   const [showSplit, setShowSplit] = useState(false);
-  const [promoError, setPromoError] = useState("");
 
   if (!order) {
     return (
@@ -63,9 +44,8 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
       if (manualDiscount.type === "percentage") discount = order.subtotal * (manualDiscount.value / 100);
       else discount = manualDiscount.value;
     }
-    if (memberDetected && !appliedPromo) {
-      const tierDiscount = memberTierId ? getTierDiscount(memberTierId) : 5; // default 5% if no tier specified
-      discount += order.subtotal * (tierDiscount / 100);
+    if (linkedMember && !appliedPromo) {
+      discount += order.subtotal * (linkedMember.discountPercent / 100);
     }
     return Math.min(discount, order.subtotal);
   };
@@ -76,37 +56,6 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
   const gst = Math.round((adjustedSubtotal + serviceCharge) * 0.09 * 100) / 100;
   const finalTotal = Math.round((adjustedSubtotal + serviceCharge + gst) * 100) / 100;
   const splitAmount = splitCount > 1 ? Math.round(finalTotal / splitCount * 100) / 100 : finalTotal;
-
-  const handleApplyPromo = () => {
-    const found = availablePromos.find(p => p.code.toLowerCase() === promoCode.trim().toLowerCase());
-    if (found) {
-      if (order.subtotal < found.minSpend) {
-        setPromoError(`Min. spend $${found.minSpend}`);
-        return;
-      }
-      setAppliedPromo(found);
-      setManualDiscount(null);
-      setPromoError("");
-    } else {
-      setPromoError(t("invalid_promo") || "Invalid promo code");
-    }
-  };
-
-  const handleRemovePromo = () => {
-    setAppliedPromo(null);
-    setPromoCode("");
-    setPromoError("");
-  };
-
-  const handleManualDiscount = (preset: typeof discountPresets[0]) => {
-    if (manualDiscount?.value === preset.value && manualDiscount?.type === preset.type) {
-      setManualDiscount(null);
-    } else {
-      setManualDiscount({ type: preset.type, value: preset.value });
-      setAppliedPromo(null);
-      setPromoCode("");
-    }
-  };
 
   return (
     <div className="bg-card flex flex-col h-full">
@@ -184,27 +133,7 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
           {/* Action bar */}
           <div className="flex items-center gap-1 px-3 py-2">
             <button
-              onClick={() => { setShowPromoSection(!showPromoSection); setShowSplit(false); }}
-              className={cn(
-                "flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors min-h-[36px]",
-                showPromoSection ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"
-              )}
-            >
-              <Tag className="h-3 w-3" />
-              {t("promo")}
-            </button>
-            <button
-              onClick={() => setMemberDetected(!memberDetected)}
-              className={cn(
-                "flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors min-h-[36px]",
-                memberDetected ? "bg-status-green-light text-status-green" : "text-muted-foreground hover:bg-accent"
-              )}
-            >
-              <UserCheck className="h-3 w-3" />
-              {t("member")}
-            </button>
-            <button
-              onClick={() => { setShowSplit(!showSplit); setShowPromoSection(false); }}
+              onClick={() => { setShowSplit(!showSplit); }}
               className={cn(
                 "flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors min-h-[36px]",
                 showSplit ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"
@@ -214,77 +143,6 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
               {t("split_bill")}
             </button>
           </div>
-
-          {/* Promo code + discount presets */}
-          {showPromoSection && (
-            <div className="px-3 pb-2 space-y-2">
-              {/* Applied promo */}
-              {appliedPromo && (
-                <div className="flex items-center justify-between bg-status-green-light rounded-lg px-3 py-2">
-                  <div>
-                    <span className="text-[11px] font-semibold text-status-green">{appliedPromo.label}</span>
-                    <span className="text-[10px] text-status-green ml-1.5 font-mono">-{appliedPromo.type === "percentage" ? `${appliedPromo.value}%` : `$${appliedPromo.value}`}</span>
-                  </div>
-                  <button onClick={handleRemovePromo} className="p-1 rounded hover:bg-status-green/10 active:scale-95">
-                    <X className="h-3 w-3 text-status-green" />
-                  </button>
-                </div>
-              )}
-
-              {/* Promo code input */}
-              {!appliedPromo && (
-                <div className="flex gap-1.5">
-                  <input
-                    value={promoCode}
-                    onChange={e => { setPromoCode(e.target.value); setPromoError(""); }}
-                    placeholder={t("enter_promo_code")}
-                    className="flex-1 h-9 px-3 rounded-lg bg-background border-1.5 border-border text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-all"
-                    onKeyDown={e => e.key === "Enter" && handleApplyPromo()}
-                  />
-                  <Button size="sm" className="h-9 px-3 text-[11px] rounded-lg" onClick={handleApplyPromo} disabled={!promoCode.trim()}>
-                    {t("apply")}
-                  </Button>
-                </div>
-              )}
-              {promoError && <p className="text-[10px] text-destructive">{promoError}</p>}
-
-              {/* Quick discount presets */}
-              {!appliedPromo && (
-                <div className="flex gap-1.5">
-                  {discountPresets.map(p => (
-                    <button
-                      key={`${p.type}-${p.value}`}
-                      onClick={() => handleManualDiscount(p)}
-                      className={cn(
-                        "flex-1 h-8 rounded-lg text-[11px] font-medium transition-colors active:scale-95",
-                        manualDiscount?.value === p.value && manualDiscount?.type === p.type
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-accent text-foreground hover:bg-secondary"
-                      )}
-                    >
-                      {p.type === "percentage" ? `${p.value}%` : `$${p.value}`}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Member badge */}
-          {memberDetected && !showPromoSection && (
-            <div className="px-3 pb-2">
-              <div className="flex items-center gap-2 bg-status-green-light rounded-lg px-3 py-2">
-                <UserCheck className="h-3.5 w-3.5 text-status-green" />
-                <div className="flex-1">
-                  <span className="text-[11px] font-semibold text-status-green">{t("member_discount_applied")}</span>
-                  <span className="text-[10px] text-status-green ml-1">{memberTierId ? getTierDiscount(memberTierId) : 5}% OFF</span>
-                </div>
-                <button onClick={() => setMemberDetected(false)} className="p-1 rounded hover:bg-status-green/10 active:scale-95">
-                  <X className="h-3 w-3 text-status-green" />
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Split bill */}
           {showSplit && (
@@ -319,6 +177,13 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
 
       {/* Totals & Pay */}
       <div className="border-t border-border p-4 space-y-1.5">
+        {linkedMember && (
+          <div className="flex items-center gap-1.5 text-[11px] text-status-green mb-1">
+            <Crown className="h-3 w-3" />
+            <span className="font-medium">{linkedMember.name}</span>
+            <span className="text-[10px] opacity-70">{linkedMember.tier} · {linkedMember.discountPercent}% off</span>
+          </div>
+        )}
         <div className="flex justify-between text-[13px] text-muted-foreground">
           <span>{t("subtotal")}</span>
           <span className="font-mono">${order.subtotal.toFixed(2)}</span>

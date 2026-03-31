@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from "react";
-import { Receipt } from "lucide-react";
+import { Receipt, User } from "lucide-react";
 import { FloorPanel } from "@/components/tablet/FloorPanel";
 import { MenuComposer } from "@/components/tablet/MenuComposer";
 import { CheckPanel } from "@/components/tablet/CheckPanel";
@@ -7,6 +7,9 @@ import { PaymentSheet } from "@/components/tablet/PaymentSheet";
 import { OrderHistory } from "@/components/tablet/OrderHistory";
 import type { PaidOrder } from "@/components/tablet/history/types";
 import { tables as mockTables, sampleOrders, reservations as mockReservations, type Table, type Order, type OrderItem, type ServiceMode, type Reservation, type CancelReason } from "@/data/mock-data";
+import { MemberIdentifyDialog } from "@/components/tablet/MemberIdentifyDialog";
+import { type CustomerFull } from "@/state/customer-store";
+import { getTierDiscount } from "@/state/membership-store";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useSettings } from "@/state/settings-store";
@@ -79,6 +82,8 @@ const TabletPOS: React.FC = () => {
   const [paidOrders, setPaidOrders] = useState<PaidOrder[]>(() => generateMockHistory());
   const [floorFullscreen, setFloorFullscreen] = useState(false);
   const [tableManagement, setTableManagement] = useState(true);
+  const [showMemberDialog, setShowMemberDialog] = useState(false);
+  const [linkedMember, setLinkedMember] = useState<CustomerFull | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>(mockReservations);
 
   // Resizable panel widths (as fractions of screen width)
@@ -605,6 +610,19 @@ const TabletPOS: React.FC = () => {
                   </span>
                 )}
               </button>
+              {/* Member identify button */}
+              <button
+                onClick={() => setShowMemberDialog(true)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-1.5 text-[11px] font-medium transition-colors min-h-[36px]",
+                  linkedMember
+                    ? "bg-status-green-light border-status-green/30 text-status-green"
+                    : "bg-card border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                )}
+              >
+                <User className="h-3.5 w-3.5" />
+                {linkedMember ? linkedMember.name.split(" ")[0] : "Member"}
+              </button>
               <ThemeToggle />
             </div>
 
@@ -620,6 +638,11 @@ const TabletPOS: React.FC = () => {
                   serviceFlow={settings.serviceFlow}
                   onSendToKitchen={handleSendToKitchen}
                   onVoidOrder={handleVoidOrder}
+                  linkedMember={linkedMember ? {
+                    name: linkedMember.name,
+                    tier: linkedMember.tier,
+                    discountPercent: getTierDiscount(`tier-${linkedMember.tier.toLowerCase()}`),
+                  } : null}
                 />
               ) : (
                 <OrderHistory orders={paidOrders} onClose={() => setShowHistory(false)} />
@@ -636,6 +659,15 @@ const TabletPOS: React.FC = () => {
           onComplete={handlePaymentComplete}
         />
       )}
+
+      {/* Member Identify Dialog */}
+      <MemberIdentifyDialog
+        open={showMemberDialog}
+        onClose={() => setShowMemberDialog(false)}
+        onMemberFound={(customer) => setLinkedMember(customer)}
+        onClearMember={() => setLinkedMember(null)}
+        currentMember={linkedMember}
+      />
     </div>
   );
 };
