@@ -20,10 +20,14 @@ type Listener = () => void;
 
 const now = new Date();
 const initialEntries: QueueEntry[] = [
-  { id: "q-1", partySize: 2, customerName: "Mr. Tan", customerPhone: "+65 9111 2222", estimatedWait: 10, status: "waiting", joinedAt: new Date(now.getTime() - 15 * 60000).toISOString(), preferredZone: "Main Hall" },
-  { id: "q-2", partySize: 4, customerName: "Sarah & family", estimatedWait: 20, status: "waiting", joinedAt: new Date(now.getTime() - 10 * 60000).toISOString() },
-  { id: "q-3", partySize: 6, customerName: "Corporate group", customerPhone: "+65 8333 4444", estimatedWait: 30, status: "called", joinedAt: new Date(now.getTime() - 25 * 60000).toISOString(), calledAt: new Date(now.getTime() - 2 * 60000).toISOString(), preferredZone: "Private" },
-  { id: "q-4", partySize: 2, customerName: "Walk-in couple", estimatedWait: 10, status: "seated", joinedAt: new Date(now.getTime() - 35 * 60000).toISOString(), calledAt: new Date(now.getTime() - 20 * 60000).toISOString(), seatedAt: new Date(now.getTime() - 18 * 60000).toISOString() },
+  { id: "q1", partySize: 4, customerName: "Daniel Loh", customerPhone: "91234000", estimatedWait: 15, status: "waiting", joinedAt: new Date(now.getTime() - 15 * 60000).toISOString(), preferredZone: "Main Hall" },
+  { id: "q2", partySize: 2, customerName: "Mary Goh", customerPhone: "98761111", estimatedWait: 10, status: "waiting", joinedAt: new Date(now.getTime() - 10 * 60000).toISOString() },
+  { id: "q3", partySize: 6, customerName: "James Teo", customerPhone: "87652222", estimatedWait: 25, status: "waiting", joinedAt: new Date(now.getTime() - 22 * 60000).toISOString(), preferredZone: "Private" },
+  { id: "q4", partySize: 3, customerName: "Anna Sim", customerPhone: "92223000", estimatedWait: 20, status: "called", joinedAt: new Date(now.getTime() - 25 * 60000).toISOString(), calledAt: new Date(now.getTime() - 2 * 60000).toISOString(), preferredZone: "Patio" },
+  { id: "q5", partySize: 2, customerName: "Steven Tan", customerPhone: "81114000", estimatedWait: 10, status: "seated", joinedAt: new Date(now.getTime() - 35 * 60000).toISOString(), calledAt: new Date(now.getTime() - 20 * 60000).toISOString(), seatedAt: new Date(now.getTime() - 18 * 60000).toISOString(), preferredZone: "Bar" },
+  { id: "q6", partySize: 5, customerName: "Linda Yeo", estimatedWait: 5, status: "waiting", joinedAt: new Date(now.getTime() - 5 * 60000).toISOString() },
+  { id: "q7", partySize: 2, customerName: "Patrick Low", customerPhone: "96665000", estimatedWait: 10, status: "no_show", joinedAt: new Date(now.getTime() - 40 * 60000).toISOString() },
+  { id: "q8", partySize: 4, customerName: "Rachel Foo", customerPhone: "93336000", estimatedWait: 15, status: "seated", joinedAt: new Date(now.getTime() - 30 * 60000).toISOString(), calledAt: new Date(now.getTime() - 15 * 60000).toISOString(), seatedAt: new Date(now.getTime() - 12 * 60000).toISOString(), preferredZone: "Main Hall" },
 ];
 
 let entriesState = [...initialEntries];

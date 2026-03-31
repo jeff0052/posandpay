@@ -497,9 +497,14 @@ export const customers: Customer[] = [
 ];
 
 export const staffMembers = [
-  { id: "s1", name: "Sarah Chen", role: "server" as const, pin: "1234" },
+  { id: "s1", name: "Sarah Lim", role: "manager" as const, pin: "1234" },
   { id: "s2", name: "Mike Tan", role: "server" as const, pin: "5678" },
-  { id: "s3", name: "Jenny Lim", role: "cashier" as const, pin: "9012" },
-  { id: "s4", name: "David Wong", role: "manager" as const, pin: "3456" },
-  { id: "s5", name: "Chef Ahmad", role: "kitchen" as const, pin: "7890" },
+  { id: "s3", name: "David Chen", role: "server" as const, pin: "9012" },
+  { id: "s4", name: "Lisa Wang", role: "cashier" as const, pin: "3456" },
+  { id: "s5", name: "Ahmad Razak", role: "kitchen" as const, pin: "7890" },
+  { id: "s6", name: "Jennifer Ng", role: "server" as const, pin: "2345" },
+  { id: "s7", name: "Kevin Loh", role: "kitchen" as const, pin: "6789" },
+  { id: "s8", name: "Rachel Goh", role: "cashier" as const, pin: "0123" },
+  { id: "s9", name: "Tommy Koh", role: "server" as const, pin: "4567" },
+  { id: "s10", name: "Priya Devi", role: "kitchen" as const, pin: "8901" },
 ];
