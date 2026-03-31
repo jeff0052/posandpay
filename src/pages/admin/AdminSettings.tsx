@@ -1,5 +1,5 @@
 import React from "react";
-import { Building2, CreditCard, Globe, Bell, QrCode, Monitor, UtensilsCrossed, Zap, Check } from "lucide-react";
+import { Building2, CreditCard, Globe, Bell, QrCode, Monitor, UtensilsCrossed, Zap, Check, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSettings, updateSettings, type QRPaymentMode, type ServiceFlow } from "@/state/settings-store";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -86,6 +86,43 @@ const AdminSettings: React.FC = () => {
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* KDS Timing */}
+      <div className="uniweb-card surface-glow p-6 mb-6">
+        <h2 className="text-sm font-semibold text-foreground mb-1">{t("kdsTimingSettings")}</h2>
+        <p className="text-[11px] text-muted-foreground mb-4">{t("kdsTimingDesc")}</p>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-[11px] text-muted-foreground font-medium block mb-1.5">{t("kdsWarningMinutes")}</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={settings.kdsWarningMinutes}
+                onChange={e => updateSettings({ kdsWarningMinutes: parseInt(e.target.value) || 5 })}
+                className="w-20 h-9 px-3 rounded-md bg-background border border-border text-[13px] text-foreground font-mono focus:outline-none focus:border-primary"
+              />
+              <span className="text-[12px] text-muted-foreground">min → Yellow</span>
+            </div>
+          </div>
+          <div>
+            <label className="text-[11px] text-muted-foreground font-medium block mb-1.5">{t("kdsUrgentMinutes")}</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={60}
+                value={settings.kdsUrgentMinutes}
+                onChange={e => updateSettings({ kdsUrgentMinutes: parseInt(e.target.value) || 10 })}
+                className="w-20 h-9 px-3 rounded-md bg-background border border-border text-[13px] text-foreground font-mono focus:outline-none focus:border-primary"
+              />
+              <span className="text-[12px] text-muted-foreground">min → Red + Pulse</span>
+            </div>
+          </div>
         </div>
       </div>
 

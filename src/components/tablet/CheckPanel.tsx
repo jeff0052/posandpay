@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Minus, Plus, Trash2, Users, UtensilsCrossed, Tag, Percent, UserCheck, Split, X, ChevronDown, ChevronUp, ChefHat } from "lucide-react";
+import { Minus, Plus, Trash2, Users, UtensilsCrossed, Tag, Percent, UserCheck, Split, X, ChevronDown, ChevronUp, ChefHat, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type Order, type Table } from "@/data/mock-data";
@@ -14,6 +14,7 @@ interface CheckPanelProps {
   onPay: () => void;
   serviceFlow?: ServiceFlow;
   onSendToKitchen?: () => void;
+  onVoidOrder?: () => void;
 }
 
 // Mock promo/discount data
@@ -30,7 +31,7 @@ const discountPresets = [
   { label: "$10", value: 10, type: "fixed" as const },
 ];
 
-export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQuantity, onRemoveItem, onPay, serviceFlow = "restaurant", onSendToKitchen }) => {
+export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQuantity, onRemoveItem, onPay, serviceFlow = "restaurant", onSendToKitchen, onVoidOrder }) => {
   const { t } = useLanguage();
   const [promoCode, setPromoCode] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<typeof availablePromos[0] | null>(null);
@@ -340,6 +341,22 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
             <span>{t("per_person")} ({splitCount})</span>
             <span className="font-mono">${splitAmount.toFixed(2)}</span>
           </div>
+        )}
+        {/* Void button — only for orders that have been sent */}
+        {order.status !== "open" && order.status !== "paid" && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full mb-2 text-[11px] h-8 text-status-red hover:text-status-red hover:bg-status-red/10 border-status-red/30"
+            onClick={() => {
+              if (window.confirm("Cancel this order? This cannot be undone.")) {
+                onVoidOrder?.();
+              }
+            }}
+          >
+            <Ban className="h-3.5 w-3.5 mr-1.5" />
+            Void Order
+          </Button>
         )}
         {serviceFlow === "restaurant" && order.status === "open" && order.items.length > 0 ? (
           <Button
