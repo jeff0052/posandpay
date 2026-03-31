@@ -4,13 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useCustomers, updateCustomer, type CustomerFull, type CustomerSegment } from "@/state/customer-store";
-
-const tierStyles: Record<string, string> = {
-  bronze: "bg-status-amber-light text-status-amber",
-  silver: "bg-accent text-muted-foreground",
-  gold: "bg-status-amber-light text-status-amber",
-  platinum: "bg-status-blue-light text-primary",
-};
+import { useMemberTiers, TIER_COLORS, type MemberTier } from "@/state/membership-store";
 
 const segmentConfig: Record<CustomerSegment, { label: string; color: string }> = {
   new: { label: "New", color: "bg-status-green-light text-status-green" },
@@ -22,6 +16,7 @@ const segmentConfig: Record<CustomerSegment, { label: string; color: string }> =
 
 const AdminCRM: React.FC = () => {
   const customers = useCustomers();
+  const memberTiers = useMemberTiers();
   const [search, setSearch] = useState("");
   const [segmentFilter, setSegmentFilter] = useState<CustomerSegment | "all">("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -61,13 +56,21 @@ const AdminCRM: React.FC = () => {
       .sort((a, b) => a.daysUntil - b.daysUntil);
   }, [customers]);
 
+  const getTierStyle = (tierName: string) => {
+    const tier = memberTiers.find(t => t.name.toLowerCase() === tierName.toLowerCase());
+    const colors = tier ? TIER_COLORS[tier.color] : TIER_COLORS.gray;
+    return colors ? `${colors.bg} ${colors.text}` : "bg-accent text-muted-foreground";
+  };
+
   const tierProgress = (c: CustomerFull) => {
-    const thresholds = { bronze: 0, silver: 300, gold: 1000, platinum: 3000 };
-    const tiers = ["bronze", "silver", "gold", "platinum"] as const;
-    const idx = tiers.indexOf(c.tier);
-    if (idx >= tiers.length - 1) return 100;
-    const current = thresholds[c.tier];
-    const next = thresholds[tiers[idx + 1]];
+    const currentTier = memberTiers.find(t => t.name.toLowerCase() === c.tier.toLowerCase());
+    if (!currentTier) return 0;
+    const currentIdx = memberTiers.findIndex(t => t.id === currentTier.id);
+    if (currentIdx >= memberTiers.length - 1) return 100; // already at max
+    const nextTier = memberTiers[currentIdx + 1];
+    if (!nextTier.requirements.minSpend) return 50; // no spend requirement
+    const current = currentTier.requirements.minSpend || 0;
+    const next = nextTier.requirements.minSpend;
     return Math.min(100, Math.round(((c.totalSpend - current) / (next - current)) * 100));
   };
 
@@ -127,7 +130,7 @@ const AdminCRM: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-foreground text-[14px]">{c.name}</span>
-                        <span className={cn("status-badge capitalize", tierStyles[c.tier])}>{c.tier}</span>
+                        <span className={cn("status-badge capitalize", getTierStyle(c.tier))}>{c.tier}</span>
                         <span className={cn("status-badge", seg.color)}>{seg.label}</span>
                       </div>
                       <div className="flex items-center gap-3 mt-1 text-[12px] text-muted-foreground">
@@ -202,7 +205,7 @@ const AdminCRM: React.FC = () => {
                 {customers.sort((a, b) => b.points - a.points).map(c => (
                   <tr key={c.id} className="table-row border-b border-border last:border-0">
                     <td className="font-medium">{c.name}</td>
-                    <td><span className={cn("status-badge capitalize", tierStyles[c.tier])}>{c.tier}</span></td>
+                    <td><span className={cn("status-badge capitalize", getTierStyle(c.tier))}>{c.tier}</span></td>
                     <td className="font-mono font-semibold">{c.points}</td>
                     <td className="font-mono">${c.totalSpend.toFixed(2)}</td>
                     <td>{c.visits}</td>

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useSettings, updateSettings, type QRPaymentMode, type ServiceFlow } from "@/state/settings-store";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Switch } from "@/components/ui/switch";
+import { MembershipTierEditor } from "@/components/admin/MembershipTierEditor";
 
 const AdminSettings: React.FC = () => {
   const settings = useSettings();
@@ -124,6 +125,11 @@ const AdminSettings: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Membership Tiers */}
+      <div className="uniweb-card surface-glow p-6 mb-6">
+        <MembershipTierEditor />
       </div>
 
       {/* Ordering Channels */}

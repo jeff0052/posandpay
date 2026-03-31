@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type Order, type Table } from "@/data/mock-data";
 import { type ServiceFlow } from "@/state/settings-store";
+import { getTierDiscount } from "@/state/membership-store";
 import { useLanguage } from "@/hooks/useLanguage";
 
 interface CheckPanelProps {
@@ -15,6 +16,7 @@ interface CheckPanelProps {
   serviceFlow?: ServiceFlow;
   onSendToKitchen?: () => void;
   onVoidOrder?: () => void;
+  memberTierId?: string;
 }
 
 // Mock promo/discount data
@@ -31,7 +33,7 @@ const discountPresets = [
   { label: "$10", value: 10, type: "fixed" as const },
 ];
 
-export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQuantity, onRemoveItem, onPay, serviceFlow = "restaurant", onSendToKitchen, onVoidOrder }) => {
+export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQuantity, onRemoveItem, onPay, serviceFlow = "restaurant", onSendToKitchen, onVoidOrder, memberTierId }) => {
   const { t } = useLanguage();
   const [promoCode, setPromoCode] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<typeof availablePromos[0] | null>(null);
@@ -61,7 +63,10 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
       if (manualDiscount.type === "percentage") discount = order.subtotal * (manualDiscount.value / 100);
       else discount = manualDiscount.value;
     }
-    if (memberDetected && !appliedPromo) discount += order.subtotal * 0.05; // 5% member discount
+    if (memberDetected && !appliedPromo) {
+      const tierDiscount = memberTierId ? getTierDiscount(memberTierId) : 5; // default 5% if no tier specified
+      discount += order.subtotal * (tierDiscount / 100);
+    }
     return Math.min(discount, order.subtotal);
   };
 
@@ -272,7 +277,7 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
                 <UserCheck className="h-3.5 w-3.5 text-status-green" />
                 <div className="flex-1">
                   <span className="text-[11px] font-semibold text-status-green">{t("member_discount_applied")}</span>
-                  <span className="text-[10px] text-status-green ml-1">5% OFF</span>
+                  <span className="text-[10px] text-status-green ml-1">{memberTierId ? getTierDiscount(memberTierId) : 5}% OFF</span>
                 </div>
                 <button onClick={() => setMemberDetected(false)} className="p-1 rounded hover:bg-status-green/10 active:scale-95">
                   <X className="h-3 w-3 text-status-green" />
