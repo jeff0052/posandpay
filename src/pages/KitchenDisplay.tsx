@@ -5,21 +5,7 @@ import { cn } from "@/lib/utils";
 import { useSettings } from "@/state/settings-store";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Link } from "react-router-dom";
-
-// KDS ticket type (same as AdminKDS)
-interface KDSTicket {
-  id: string;
-  name: string;
-  quantity: number;
-  status: "new" | "preparing" | "ready" | "served";
-  notes?: string;
-  fired_at?: string;
-  modifiers?: { name: string; price: number }[];
-  combo_items?: { name: string; groupName: string }[];
-  orderId: string;
-  tableNumber?: string;
-  serviceMode?: string;
-}
+import { MOCK_KDS_TICKETS, groupTicketsByOrder, getOrderStatus, SERVICE_MODE_LABELS, type KDSTicket, type KDSOrder } from "@/data/mock-kds-data";
 
 interface VoidNotification {
   orderId: string;
@@ -27,24 +13,11 @@ interface VoidNotification {
   timestamp: string;
 }
 
-// Mock tickets — same Singapore dishes as AdminKDS
-const MOCK_TICKETS: KDSTicket[] = [
-  { id: "k1", name: "Chicken Rice", quantity: 2, status: "new", fired_at: new Date(Date.now() - 2 * 60000).toISOString(), orderId: "ORD-2404", tableNumber: "12", serviceMode: "dine-in" },
-  { id: "k2", name: "Laksa", quantity: 1, status: "new", fired_at: new Date(Date.now() - 6 * 60000).toISOString(), notes: "Extra spicy", orderId: "ORD-2404", tableNumber: "12", serviceMode: "dine-in" },
-  { id: "k3", name: "Satay (10pc)", quantity: 1, status: "new", fired_at: new Date(Date.now() - 12 * 60000).toISOString(), modifiers: [{ name: "Extra Peanut Sauce", price: 0 }], orderId: "ORD-2409", tableNumber: "10", serviceMode: "dine-in" },
-  { id: "k4", name: "Char Kway Teow", quantity: 1, status: "preparing", fired_at: new Date(Date.now() - 8 * 60000).toISOString(), orderId: "ORD-2405", serviceMode: "delivery" },
-  { id: "k5", name: "Nasi Lemak Set", quantity: 2, status: "preparing", fired_at: new Date(Date.now() - 10 * 60000).toISOString(), orderId: "ORD-2409", tableNumber: "10", serviceMode: "dine-in" },
-  { id: "k6", name: "Bak Kut Teh", quantity: 1, status: "preparing", fired_at: new Date(Date.now() - 4 * 60000).toISOString(), notes: "Less pepper", orderId: "ORD-2404", tableNumber: "12", serviceMode: "dine-in" },
-  { id: "k7", name: "Prawn Crackers", quantity: 3, status: "ready", fired_at: new Date(Date.now() - 15 * 60000).toISOString(), orderId: "ORD-2402", tableNumber: "7", serviceMode: "dine-in" },
-  { id: "k8", name: "Teh Tarik", quantity: 2, status: "ready", fired_at: new Date(Date.now() - 14 * 60000).toISOString(), orderId: "ORD-2405", serviceMode: "delivery" },
-  { id: "k9", name: "Hokkien Mee", quantity: 1, status: "new", fired_at: new Date(Date.now() - 1 * 60000).toISOString(), orderId: "ORD-2406", tableNumber: "1", serviceMode: "dine-in" },
-];
-
 const KitchenDisplay: React.FC = () => {
   const { t } = useLanguage();
   const settings = useSettings();
   const [view, setView] = useState<"kitchen" | "pickup">("kitchen");
-  const [tickets, setTickets] = useState<KDSTicket[]>(MOCK_TICKETS);
+  const [tickets, setTickets] = useState<KDSTicket[]>(MOCK_KDS_TICKETS);
   const [voidNotifications, setVoidNotifications] = useState<VoidNotification[]>([
     // One sample void notification
     { orderId: "ORD-2410", tableNumber: "4", timestamp: new Date().toISOString() },
@@ -62,10 +35,10 @@ const KitchenDisplay: React.FC = () => {
     return Math.floor((Date.now() - new Date(firedAt).getTime()) / 60000);
   };
 
-  // Color based on elapsed time for NEW items
-  const getTicketColor = (ticket: KDSTicket) => {
-    if (ticket.status !== "new") return "default";
-    const elapsed = getElapsedMin(ticket.fired_at);
+  // Color based on elapsed time for NEW orders
+  const getOrderColor = (order: KDSOrder) => {
+    if (getOrderStatus(order) !== "new") return "default";
+    const elapsed = getElapsedMin(order.firedAt);
     if (elapsed >= settings.kdsUrgentMinutes) return "red";
     if (elapsed >= settings.kdsWarningMinutes) return "yellow";
     return "green";
@@ -78,21 +51,197 @@ const KitchenDisplay: React.FC = () => {
     default: { border: "border-border", bg: "bg-card", text: "text-foreground", dot: "bg-muted-foreground" },
   };
 
-  const moveTicket = useCallback((ticketId: string, newStatus: KDSTicket["status"]) => {
-    setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: newStatus } : t));
+  // Per-item status dot color
+  const itemStatusDot = (status: KDSTicket["status"]) => {
+    if (status === "new") return "bg-emerald-500";
+    if (status === "preparing") return "bg-amber-500";
+    if (status === "ready") return "bg-blue-500";
+    return "bg-muted-foreground";
+  };
+
+  // Move all items in an order that match fromStatus to toStatus
+  const moveOrderItems = useCallback((orderId: string, fromStatus: KDSTicket["status"], toStatus: KDSTicket["status"]) => {
+    setTickets(prev => prev.map(t =>
+      t.orderId === orderId && t.status === fromStatus ? { ...t, status: toStatus } : t
+    ));
   }, []);
 
-  const removeTicket = useCallback((ticketId: string) => {
-    setTickets(prev => prev.filter(t => t.id !== ticketId));
+  // Remove all items in an order
+  const removeOrder = useCallback((orderId: string) => {
+    setTickets(prev => prev.filter(t => t.orderId !== orderId));
   }, []);
 
   const dismissVoid = useCallback((orderId: string) => {
     setVoidNotifications(prev => prev.filter(v => v.orderId !== orderId));
   }, []);
 
-  const newTickets = tickets.filter(t => t.status === "new");
-  const preparingTickets = tickets.filter(t => t.status === "preparing");
-  const readyTickets = tickets.filter(t => t.status === "ready");
+  // Group tickets into orders and assign to columns
+  const orders = groupTicketsByOrder(tickets);
+  const newOrders = orders.filter(o => getOrderStatus(o) === "new");
+  const preparingOrders = orders.filter(o => getOrderStatus(o) === "preparing");
+  const readyOrders = orders.filter(o => getOrderStatus(o) === "ready");
+
+  // Service mode badge component
+  const ServiceBadge = ({ mode }: { mode: string }) => {
+    const label = SERVICE_MODE_LABELS[mode] || SERVICE_MODE_LABELS["dine-in"];
+    return (
+      <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded", label.color)}>
+        {label.en}
+      </span>
+    );
+  };
+
+  // Render a single item line within an order card
+  const ItemLine = ({ item, large }: { item: KDSTicket; large?: boolean }) => (
+    <div className={cn("py-1", large ? "py-1.5" : "")}>
+      <div className="flex items-start gap-2">
+        <span className={cn("mt-1.5 shrink-0 h-2 w-2 rounded-full", itemStatusDot(item.status))} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-1.5">
+            <span className={cn("font-bold text-foreground", large ? "text-lg" : "text-[13px]")}>
+              {item.name}
+            </span>
+            <span className={cn("text-muted-foreground", large ? "text-base" : "text-[12px]")}>
+              x{item.quantity}
+            </span>
+            {item.seat != null && item.seat > 0 && (
+              <span className="text-[10px] text-muted-foreground font-mono ml-auto shrink-0">S{item.seat}</span>
+            )}
+          </div>
+          {item.modifiers?.map((m, i) => (
+            <div key={i} className={cn("text-muted-foreground", large ? "text-sm" : "text-[11px]")}>
+              + {m.name}
+            </div>
+          ))}
+          {item.combo_items?.map((c, i) => (
+            <div key={i} className={cn("text-muted-foreground", large ? "text-sm" : "text-[11px]")}>
+              <span className="opacity-60">{c.groupName}:</span> {c.name}
+            </div>
+          ))}
+          {item.notes && !item.notes.includes("Serve all") && (
+            <div className={cn("text-amber-600 dark:text-amber-400 mt-0.5", large ? "text-sm" : "text-[11px]")}>
+              {item.notes}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render an order card for kitchen view
+  const OrderCard = ({ order, column }: { order: KDSOrder; column: "new" | "preparing" | "ready" }) => {
+    const color = column === "new" ? getOrderColor(order) : "default";
+    const styles = column === "new" ? colorStyles[color] :
+      column === "preparing" ? { border: "border-amber-400", bg: "bg-amber-50 dark:bg-amber-950/30", text: "text-amber-600", dot: "bg-amber-500" } :
+      { border: "border-blue-400", bg: "bg-blue-50 dark:bg-blue-950/30", text: "text-blue-600", dot: "bg-blue-500" };
+    const elapsed = getElapsedMin(order.firedAt);
+
+    return (
+      <div className={cn(
+        "rounded-xl border-2 p-3 transition-all",
+        styles.border, styles.bg,
+        color === "red" && "animate-pulse"
+      )}>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[11px] font-mono text-muted-foreground font-bold">{order.orderId}</span>
+          <div className="flex items-center gap-1.5">
+            {order.tableNumber ? (
+              <span className="text-[11px] font-semibold">T{order.tableNumber}</span>
+            ) : (
+              <ServiceBadge mode={order.serviceMode} />
+            )}
+            <span className={cn("text-[11px] font-bold", styles.text)}>{elapsed}m</span>
+          </div>
+        </div>
+
+        {/* Order-level note banner */}
+        {order.orderNote && (
+          <div className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-[11px] font-semibold px-2 py-1 rounded-md mb-2">
+            {order.orderNote}
+          </div>
+        )}
+
+        {/* Service mode badge for dine-in (non-dine-in already shown in header) */}
+        {order.tableNumber && order.serviceMode !== "dine-in" && (
+          <div className="mb-1"><ServiceBadge mode={order.serviceMode} /></div>
+        )}
+
+        {/* Items list */}
+        <div className="divide-y divide-border/50">
+          {order.items.map(item => (
+            <ItemLine key={item.id} item={item} />
+          ))}
+        </div>
+
+        {/* Action button */}
+        {column === "new" && (
+          <Button size="sm" className="w-full mt-2 h-8 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white"
+            onClick={() => moveOrderItems(order.orderId, "new", "preparing")}>
+            Start All
+          </Button>
+        )}
+        {column === "preparing" && (
+          <Button size="sm" className="w-full mt-2 h-8 text-[12px] bg-amber-600 hover:bg-amber-700 text-white"
+            onClick={() => moveOrderItems(order.orderId, "preparing", "ready")}>
+            All Ready
+          </Button>
+        )}
+        {column === "ready" && (
+          <Button size="sm" className="w-full mt-2 h-8 text-[12px]"
+            onClick={() => removeOrder(order.orderId)}>
+            Served
+          </Button>
+        )}
+      </div>
+    );
+  };
+
+  // Render an order card for pickup view (larger text)
+  const PickupOrderCard = ({ order, column }: { order: KDSOrder; column: "preparing" | "ready" }) => {
+    const elapsed = getElapsedMin(order.firedAt);
+    const borderColor = column === "preparing" ? "border-amber-400" : "border-emerald-400";
+    const bgColor = column === "preparing" ? "bg-amber-50 dark:bg-amber-950/30" : "bg-emerald-50 dark:bg-emerald-950/30";
+    const elapsedColor = column === "preparing" ? "text-amber-600" : "text-emerald-600";
+
+    return (
+      <div className={cn("rounded-xl border-2 p-4", borderColor, bgColor)}>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <span className="text-lg font-mono font-bold text-foreground">{order.orderId}</span>
+          <div className="flex items-center gap-2">
+            {order.tableNumber ? (
+              <span className={cn("text-lg font-bold", elapsedColor)}>Table {order.tableNumber}</span>
+            ) : (
+              <ServiceBadge mode={order.serviceMode} />
+            )}
+            <span className={cn("text-sm font-bold", elapsedColor)}>{elapsed}m</span>
+          </div>
+        </div>
+
+        {/* Order-level note banner */}
+        {order.orderNote && (
+          <div className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-sm font-semibold px-2 py-1 rounded-md mt-2">
+            {order.orderNote}
+          </div>
+        )}
+
+        {/* Items list */}
+        <div className="mt-2 divide-y divide-border/50">
+          {order.items.map(item => (
+            <ItemLine key={item.id} item={item} large />
+          ))}
+        </div>
+
+        {column === "ready" && (
+          <Button size="lg" className="w-full mt-3 h-12 text-[14px] bg-emerald-600 hover:bg-emerald-700 text-white"
+            onClick={() => removeOrder(order.orderId)}>
+            {t("pickedUp")}
+          </Button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -157,37 +306,12 @@ const KitchenDisplay: React.FC = () => {
               <div className="flex items-center gap-2 mb-3 px-1">
                 <Clock className="h-4 w-4 text-emerald-500" />
                 <span className="text-[13px] font-bold text-foreground">{t("newOrders")}</span>
-                <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-[11px] font-bold px-2 py-0.5 rounded-full">{newTickets.length}</span>
+                <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-[11px] font-bold px-2 py-0.5 rounded-full">{newOrders.length}</span>
               </div>
               <div className="flex-1 overflow-y-auto space-y-2 pos-scrollbar">
-                {newTickets.map(ticket => {
-                  const color = getTicketColor(ticket);
-                  const styles = colorStyles[color];
-                  const elapsed = getElapsedMin(ticket.fired_at);
-                  return (
-                    <div key={ticket.id} className={cn(
-                      "rounded-xl border-2 p-3 transition-all",
-                      styles.border, styles.bg,
-                      color === "red" && "animate-pulse"
-                    )}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[11px] font-mono text-muted-foreground">{ticket.orderId}</span>
-                        <div className="flex items-center gap-1.5">
-                          {ticket.tableNumber && <span className="text-[11px] font-semibold">T{ticket.tableNumber}</span>}
-                          <span className={cn("text-[11px] font-bold", styles.text)}>{elapsed}m</span>
-                        </div>
-                      </div>
-                      <div className="text-[14px] font-bold text-foreground">{ticket.name} <span className="text-muted-foreground">x{ticket.quantity}</span></div>
-                      {ticket.modifiers?.map((m, i) => (
-                        <div key={i} className="text-[11px] text-muted-foreground mt-0.5">+ {m.name}</div>
-                      ))}
-                      {ticket.notes && <div className="text-[11px] text-amber-600 mt-1">{ticket.notes}</div>}
-                      <Button size="sm" className="w-full mt-2 h-8 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => moveTicket(ticket.id, "preparing")}>
-                        {t("startPreparing")}
-                      </Button>
-                    </div>
-                  );
-                })}
+                {newOrders.map(order => (
+                  <OrderCard key={order.orderId} order={order} column="new" />
+                ))}
               </div>
             </div>
 
@@ -196,31 +320,12 @@ const KitchenDisplay: React.FC = () => {
               <div className="flex items-center gap-2 mb-3 px-1">
                 <ChefHat className="h-4 w-4 text-amber-500" />
                 <span className="text-[13px] font-bold text-foreground">{t("preparing")}</span>
-                <span className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 text-[11px] font-bold px-2 py-0.5 rounded-full">{preparingTickets.length}</span>
+                <span className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 text-[11px] font-bold px-2 py-0.5 rounded-full">{preparingOrders.length}</span>
               </div>
               <div className="flex-1 overflow-y-auto space-y-2 pos-scrollbar">
-                {preparingTickets.map(ticket => {
-                  const elapsed = getElapsedMin(ticket.fired_at);
-                  return (
-                    <div key={ticket.id} className="rounded-xl border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 p-3">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[11px] font-mono text-muted-foreground">{ticket.orderId}</span>
-                        <div className="flex items-center gap-1.5">
-                          {ticket.tableNumber && <span className="text-[11px] font-semibold">T{ticket.tableNumber}</span>}
-                          <span className="text-[11px] font-bold text-amber-600">{elapsed}m</span>
-                        </div>
-                      </div>
-                      <div className="text-[14px] font-bold text-foreground">{ticket.name} <span className="text-muted-foreground">x{ticket.quantity}</span></div>
-                      {ticket.modifiers?.map((m, i) => (
-                        <div key={i} className="text-[11px] text-muted-foreground mt-0.5">+ {m.name}</div>
-                      ))}
-                      {ticket.notes && <div className="text-[11px] text-amber-600 mt-1">{ticket.notes}</div>}
-                      <Button size="sm" className="w-full mt-2 h-8 text-[12px] bg-amber-600 hover:bg-amber-700 text-white" onClick={() => moveTicket(ticket.id, "ready")}>
-                        {t("markReady")}
-                      </Button>
-                    </div>
-                  );
-                })}
+                {preparingOrders.map(order => (
+                  <OrderCard key={order.orderId} order={order} column="preparing" />
+                ))}
               </div>
             </div>
 
@@ -229,27 +334,12 @@ const KitchenDisplay: React.FC = () => {
               <div className="flex items-center gap-2 mb-3 px-1">
                 <Check className="h-4 w-4 text-blue-500" />
                 <span className="text-[13px] font-bold text-foreground">Ready</span>
-                <span className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-[11px] font-bold px-2 py-0.5 rounded-full">{readyTickets.length}</span>
+                <span className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-[11px] font-bold px-2 py-0.5 rounded-full">{readyOrders.length}</span>
               </div>
               <div className="flex-1 overflow-y-auto space-y-2 pos-scrollbar">
-                {readyTickets.map(ticket => {
-                  const elapsed = getElapsedMin(ticket.fired_at);
-                  return (
-                    <div key={ticket.id} className="rounded-xl border-2 border-blue-400 bg-blue-50 dark:bg-blue-950/30 p-3">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[11px] font-mono text-muted-foreground">{ticket.orderId}</span>
-                        <div className="flex items-center gap-1.5">
-                          {ticket.tableNumber && <span className="text-[11px] font-semibold">T{ticket.tableNumber}</span>}
-                          <span className="text-[11px] font-bold text-blue-600">{elapsed}m</span>
-                        </div>
-                      </div>
-                      <div className="text-[14px] font-bold text-foreground">{ticket.name} <span className="text-muted-foreground">x{ticket.quantity}</span></div>
-                      <Button size="sm" className="w-full mt-2 h-8 text-[12px]" onClick={() => removeTicket(ticket.id)}>
-                        {t("markServed")}
-                      </Button>
-                    </div>
-                  );
-                })}
+                {readyOrders.map(order => (
+                  <OrderCard key={order.orderId} order={order} column="ready" />
+                ))}
               </div>
             </div>
           </div>
@@ -261,17 +351,11 @@ const KitchenDisplay: React.FC = () => {
               <div className="flex items-center gap-3 mb-4 px-1">
                 <ChefHat className="h-6 w-6 text-amber-500" />
                 <span className="text-xl font-bold text-foreground">{t("preparing")}</span>
-                <span className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 text-sm font-bold px-3 py-1 rounded-full">{preparingTickets.length}</span>
+                <span className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 text-sm font-bold px-3 py-1 rounded-full">{preparingOrders.length}</span>
               </div>
               <div className="flex-1 overflow-y-auto space-y-3 pos-scrollbar">
-                {preparingTickets.map(ticket => (
-                  <div key={ticket.id} className="rounded-xl border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 p-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg font-mono font-bold text-foreground">{ticket.orderId}</span>
-                      {ticket.tableNumber && <span className="text-lg font-bold text-amber-600">Table {ticket.tableNumber}</span>}
-                    </div>
-                    <div className="text-2xl font-bold text-foreground mt-2">{ticket.name} <span className="text-muted-foreground">x{ticket.quantity}</span></div>
-                  </div>
+                {preparingOrders.map(order => (
+                  <PickupOrderCard key={order.orderId} order={order} column="preparing" />
                 ))}
               </div>
             </div>
@@ -281,20 +365,11 @@ const KitchenDisplay: React.FC = () => {
               <div className="flex items-center gap-3 mb-4 px-1">
                 <Check className="h-6 w-6 text-emerald-500" />
                 <span className="text-xl font-bold text-foreground">{t("readyForPickup")}</span>
-                <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-sm font-bold px-3 py-1 rounded-full">{readyTickets.length}</span>
+                <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-sm font-bold px-3 py-1 rounded-full">{readyOrders.length}</span>
               </div>
               <div className="flex-1 overflow-y-auto space-y-3 pos-scrollbar">
-                {readyTickets.map(ticket => (
-                  <div key={ticket.id} className="rounded-xl border-2 border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 p-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg font-mono font-bold text-foreground">{ticket.orderId}</span>
-                      {ticket.tableNumber && <span className="text-lg font-bold text-emerald-600">Table {ticket.tableNumber}</span>}
-                    </div>
-                    <div className="text-2xl font-bold text-foreground mt-2">{ticket.name} <span className="text-muted-foreground">x{ticket.quantity}</span></div>
-                    <Button size="lg" className="w-full mt-3 h-12 text-[14px] bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => removeTicket(ticket.id)}>
-                      {t("pickedUp")}
-                    </Button>
-                  </div>
+                {readyOrders.map(order => (
+                  <PickupOrderCard key={order.orderId} order={order} column="ready" />
                 ))}
               </div>
             </div>
