@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { X, Upload, Link, Image as ImageIcon, ChefHat } from "lucide-react";
+import { X, Upload, Link, Image as ImageIcon, ChefHat, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
@@ -10,28 +10,52 @@ import { compressImageToBase64, isValidImageUrl } from "@/lib/image-utils";
 import { RecipeEditor } from "./RecipeEditor";
 
 interface MenuItemDrawerProps {
-  item: Partial<MenuItem> & { id?: string };
+  item: MenuItem | null;
   isNew: boolean;
   onSave: (item: Partial<MenuItem>) => void;
-  onClose: () => void;
+  onDelete?: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  categories?: string[];
+  allMenuItems?: MenuItem[];
 }
 
-export const MenuItemDrawer: React.FC<MenuItemDrawerProps> = ({ item, isNew, onSave, onClose }) => {
+export const MenuItemDrawer: React.FC<MenuItemDrawerProps> = ({ item, isNew, onSave, onDelete, open, onOpenChange, categories: catProps }) => {
   const { t } = useLanguage();
-  const categories = useCategories();
+  const categoriesFromStore = useCategories();
+  const categoryNames = catProps || categoriesFromStore.map(c => c.name);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [name, setName] = useState(item.name || "");
-  const [nameZh, setNameZh] = useState(item.nameZh || "");
-  const [price, setPrice] = useState(String(item.price || ""));
-  const [category, setCategory] = useState(item.category || categories[0]?.name || "");
-  const [description, setDescription] = useState(item.description || "");
-  const [image, setImage] = useState(item.image || "");
-  const [available, setAvailable] = useState(item.available ?? true);
-  const [popular, setPopular] = useState(item.popular ?? false);
-  const [selectedModifiers, setSelectedModifiers] = useState<string[]>(item.modifierGroups || []);
+  const [name, setName] = useState("");
+  const [nameZh, setNameZh] = useState("");
+  const [price, setPrice] = useState("");
+  const [category, setCategory] = useState("");
+  const [description, setDescription] = useState("");
+  const [image, setImage] = useState("");
+  const [available, setAvailable] = useState(true);
+  const [popular, setPopular] = useState(false);
+  const [selectedModifiers, setSelectedModifiers] = useState<string[]>([]);
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [urlInput, setUrlInput] = useState("");
+
+  // Reset state when item changes
+  React.useEffect(() => {
+    if (item) {
+      setName(item.name || "");
+      setNameZh(item.nameZh || "");
+      setPrice(String(item.price || ""));
+      setCategory(item.category || categoryNames[0] || "");
+      setDescription(item.description || "");
+      setImage(item.image || "");
+      setAvailable(item.available ?? true);
+      setPopular(item.popular ?? false);
+      setSelectedModifiers(item.modifierGroups || []);
+    }
+  }, [item]);
+
+  const onClose = () => onOpenChange(false);
+
+  if (!open || !item) return null;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -148,7 +172,7 @@ export const MenuItemDrawer: React.FC<MenuItemDrawerProps> = ({ item, isNew, onS
                 <label className="text-[11px] text-muted-foreground block mb-1">{t("categoryName")}</label>
                 <select value={category} onChange={e => setCategory(e.target.value)}
                   className="w-full h-8 px-2.5 rounded-md bg-background border border-border text-[12px] focus:outline-none focus:border-primary">
-                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  {categoryNames.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
             </div>
@@ -199,6 +223,11 @@ export const MenuItemDrawer: React.FC<MenuItemDrawerProps> = ({ item, isNew, onS
 
         {/* Footer */}
         <div className="px-5 py-4 border-t border-border shrink-0 flex gap-2">
+          {!isNew && onDelete && (
+            <Button variant="destructive" className="h-9 text-[12px] px-3" onClick={() => { if (window.confirm("Delete this item?")) onDelete(); }}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
           <Button variant="outline" className="flex-1 h-9 text-[12px]" onClick={onClose}>{t("cancel")}</Button>
           <Button className="flex-1 h-9 text-[12px]" onClick={handleSave} disabled={!name.trim() || !price}>{t("confirm")}</Button>
         </div>

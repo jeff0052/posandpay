@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 import { categories, type MenuItem, type ComboGroup } from "@/data/mock-data";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { addMenuItemToStore, deleteMenuItemFromStore, updateMenuItemInStore, useMenuItems } from "@/state/menu-store";
-import CategoryManager from "@/components/admin/CategoryManager";
-import ModifierManager from "@/components/admin/ModifierManager";
-import MenuItemDrawer from "@/components/admin/MenuItemDrawer";
+import { CategoryManager } from "@/components/admin/CategoryManager";
+import { ModifierManager } from "@/components/admin/ModifierManager";
+import { MenuItemDrawer } from "@/components/admin/MenuItemDrawer";
 
 const AdminMenu: React.FC = () => {
   const items = useMenuItems();
