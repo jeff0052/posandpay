@@ -3,7 +3,7 @@ import { X, User, Search, Crown, Delete, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/hooks/useLanguage";
-import { useCustomers, type CustomerFull } from "@/state/customer-store";
+import { findByPhone as findCustomerByPhone, type CustomerFull } from "@/state/customer-store";
 import { TIER_COLORS, getTierById } from "@/state/membership-store";
 
 interface MemberIdentifyDialogProps {
@@ -18,7 +18,7 @@ export const MemberIdentifyDialog: React.FC<MemberIdentifyDialogProps> = ({
   open, onClose, onMemberFound, onClearMember, currentMember,
 }) => {
   const { t } = useLanguage();
-  const { findByPhone } = useCustomers();
+  // Use standalone findByPhone from customer-store
   const [phone, setPhone] = useState("");
   const [searched, setSearched] = useState(false);
   const [foundMember, setFoundMember] = useState<CustomerFull | null>(null);
@@ -27,7 +27,7 @@ export const MemberIdentifyDialog: React.FC<MemberIdentifyDialogProps> = ({
 
   const handleSearch = () => {
     if (phone.length < 4) return;
-    const result = findByPhone(phone);
+    const result = findCustomerByPhone(phone);
     setFoundMember(result || null);
     setSearched(true);
   };
