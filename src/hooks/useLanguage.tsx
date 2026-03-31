@@ -81,7 +81,15 @@ const dict: Record<Lang, Record<string, string>> = {
     total: "Total",
     pay: "Pay",
     send_to_kitchen: "Send to Kitchen",
-    
+    serviceFlow: "Service Flow",
+    serviceFlowDesc: "How orders are processed at POS terminals",
+    restaurant: "Restaurant",
+    fastFood: "Fast Food",
+    restaurantDesc: "Order → Kitchen → Dine → Pay",
+    fastFoodDesc: "Order → Pay → Kitchen → Pickup",
+    orderSent: "Order Sent",
+    awaitingPayment: "Awaiting Payment",
+
     // Service modes
     dine_in: "Dine-in",
     takeaway: "Takeaway",
@@ -288,7 +296,15 @@ const dict: Record<Lang, Record<string, string>> = {
     total: "合计",
     pay: "结账",
     send_to_kitchen: "下单",
-    
+    serviceFlow: "服务流程",
+    serviceFlowDesc: "POS 终端的订单处理方式",
+    restaurant: "餐厅模式",
+    fastFood: "快餐模式",
+    restaurantDesc: "点单 → 出餐 → 用餐 → 付款",
+    fastFoodDesc: "点单 → 付款 → 出餐 → 取餐",
+    orderSent: "已下单",
+    awaitingPayment: "等待付款",
+
     dine_in: "堂食",
     takeaway: "外带",
     delivery: "外卖",

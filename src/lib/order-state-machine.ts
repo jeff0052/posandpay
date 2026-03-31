@@ -1,7 +1,7 @@
 import type { OrderStatus } from "@/data/mock-data";
 
 const validTransitions: Record<OrderStatus, OrderStatus[]> = {
-  open: ["sent", "void"],
+  open: ["sent", "paid", "void"],
   sent: ["preparing", "void"],
   preparing: ["ready", "void"],
   ready: ["served", "void"],
