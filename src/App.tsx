@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
@@ -26,6 +27,8 @@ import KioskOrdering from "./pages/KioskOrdering";
 import QROrdering from "./pages/QROrdering";
 import NotFound from "./pages/NotFound";
 
+const KitchenDisplay = lazy(() => import("./pages/KitchenDisplay"));
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -43,6 +46,7 @@ const App = () => (
               <Route path="/queue" element={<QueueKiosk />} />
               <Route path="/kiosk" element={<KioskOrdering />} />
               <Route path="/qr" element={<QROrdering />} />
+              <Route path="/kds" element={<KitchenDisplay />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="menu" element={<AdminMenu />} />

@@ -9,6 +9,8 @@ export interface MerchantSettings {
   kioskEnabled: boolean;
   kioskPaymentMethods: { card: boolean; qr: boolean };
   serviceFlow: ServiceFlow;
+  kdsWarningMinutes: number;
+  kdsUrgentMinutes: number;
 }
 
 type Listener = () => void;
@@ -19,6 +21,8 @@ let state: MerchantSettings = {
   kioskEnabled: true,
   kioskPaymentMethods: { card: true, qr: true },
   serviceFlow: "restaurant" as ServiceFlow,
+  kdsWarningMinutes: 5,
+  kdsUrgentMinutes: 10,
 };
 
 const listeners = new Set<Listener>();
