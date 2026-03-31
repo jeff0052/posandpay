@@ -1,11 +1,13 @@
 import React from "react";
-import { Building2, CreditCard, Globe, Bell, QrCode, Monitor } from "lucide-react";
+import { Building2, CreditCard, Globe, Bell, QrCode, Monitor, UtensilsCrossed, Zap, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSettings, updateSettings, type QRPaymentMode } from "@/state/settings-store";
+import { useSettings, updateSettings, type QRPaymentMode, type ServiceFlow } from "@/state/settings-store";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Switch } from "@/components/ui/switch";
 
 const AdminSettings: React.FC = () => {
   const settings = useSettings();
+  const { t } = useLanguage();
 
   const settingsCards = [
     { icon: Building2, title: "Outlet Details", desc: "Business name, address, operating hours", status: "Configured" },
@@ -47,6 +49,44 @@ const AdminSettings: React.FC = () => {
             </span>
           </button>
         ))}
+      </div>
+
+      {/* Service Flow */}
+      <div className="uniweb-card surface-glow p-6 mb-6">
+        <h2 className="text-sm font-semibold text-foreground mb-1">{t("serviceFlow")}</h2>
+        <p className="text-[11px] text-muted-foreground mb-4">{t("serviceFlowDesc")}</p>
+
+        <div className="grid grid-cols-2 gap-3">
+          {([
+            { key: "restaurant" as ServiceFlow, icon: UtensilsCrossed, titleKey: "restaurant", descKey: "restaurantDesc" },
+            { key: "fast-food" as ServiceFlow, icon: Zap, titleKey: "fastFood", descKey: "fastFoodDesc" },
+          ]).map(mode => {
+            const isActive = settings.serviceFlow === mode.key;
+            return (
+              <button
+                key={mode.key}
+                onClick={() => updateSettings({ serviceFlow: mode.key })}
+                className={cn(
+                  "relative p-4 rounded-xl border-2 text-left transition-all",
+                  isActive
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/30 bg-card"
+                )}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <mode.icon className={cn("h-5 w-5", isActive ? "text-primary" : "text-muted-foreground")} />
+                  <span className={cn("font-semibold text-[13px]", isActive ? "text-primary" : "text-foreground")}>{t(mode.titleKey)}</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">{t(mode.descKey)}</p>
+                {isActive && (
+                  <div className="absolute top-3 right-3">
+                    <Check className="h-4 w-4 text-primary" />
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Ordering Channels */}
