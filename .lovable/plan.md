@@ -1,105 +1,106 @@
 
 
-# Gemini-Inspired UI Evolution Plan
+# POS System Integration Audit + Sales BI + Settings UI Fix
 
-## Design Philosophy Extracted from Google Gemini
+## Issues Identified
 
-The Gemini design article emphasizes: **directional gradients** as context builders, **soft rounded shapes** for warmth and trust, **intentional micro-motion** to convey system state, and an overall **"warm, spatial, ethereal"** quality. The key is not flashy effects but subtle, purposeful visual cues that make the interface feel alive and intelligent.
+### 1. Settings Toggle UI Drift
+The custom toggle buttons in `AdminSettings.tsx` use `absolute` positioning with `top-0.5` and manual `translate-x` values, but the parent `button` has no explicit height constraint. The thumb `span` needs the parent to have `relative` with proper flex centering. Fix: replace the hand-rolled toggles with the existing `Switch` component from `src/components/ui/switch.tsx` (Radix-based, properly aligned).
 
-## What Changes (and What Does NOT)
+### 2. Sales Report — Empty Daily Chart + No BI
+`AdminSales.tsx` uses hardcoded static data. The chart renders bars but they may appear blank if CSS conflicts exist. More importantly, the page lacks real analytics depth. 
 
-**Preserved**: All layout structure, component hierarchy, brand colors (primary blue `221 63% 33%`), warm palette, DM Sans typography, existing functionality.
+**Fix**: Rewrite `AdminSales.tsx` into a comprehensive BI dashboard:
+- Query orders from the database (`orders` + `order_items` tables) for real data
+- Add date range selector (Today / This Week / This Month / Custom)
+- **Section 1: KPI Cards** — Revenue, Orders, Avg Order Value, Revenue per Table (all computed from DB)
+- **Section 2: Daily Sales Chart** — Bar chart using `recharts` (already available via `chart.tsx` wrapper), showing daily revenue for selected period
+- **Section 3: Hourly Heatmap** — Grid showing order volume by hour-of-day × day-of-week
+- **Section 4: Top Items** — Ranked list from `order_items` grouped by `menu_item_id`
+- **Section 5: Revenue by Channel** — Pie/donut chart breaking down `service_mode` (dine-in, takeaway, kiosk, qr)
+- **Section 6: Payment Method Mix** — From paid orders
+- **Section 7: Table Turnover** — Average time occupied per table
 
-**Enhanced**: Surface treatments, transitions, status indicators, hover/active states, shadows, and subtle ambient effects.
+### 3. Front-to-Back Integration Audit
 
----
+Current state: Most modules use in-memory mock data (`mock-data.ts`, zustand-like stores). The database tables exist but aren't wired to most UIs. Key gaps:
 
-## Changes
+**A. Kiosk & QR orders don't persist to DB**
+- `KioskOrdering.tsx` and `QROrdering.tsx` complete orders in local state only
+- Fix: On payment complete, insert into `orders` + `order_items` + `order_item_modifiers` tables
+- This makes them visible in KDS, Dashboard, and Sales Report
 
-### 1. Gradient Accent System (CSS variables + utility classes)
-**File**: `src/index.css`
+**B. KDS reads from `sampleOrders` (mock), not DB**
+- `AdminKDS.tsx` imports `sampleOrders` from mock-data
+- Fix: Query `order_items` joined with `orders` where status is not `served`/`paid`, with realtime subscription
 
-Add CSS custom properties for reusable gradients derived from the existing primary blue:
-- `--gradient-ai`: A subtle blue-to-transparent radial gradient for card highlights and active states (Gemini's "energy diffusion" concept)
-- `--gradient-surface`: A very faint warm-to-cool diagonal for elevated surfaces
-- `--gradient-status`: Per-status soft radial glows (green, amber, red) replacing flat background colors on KPI stripes
+**C. Dashboard uses static mock data**
+- Fix: Query today's orders from DB for live KPIs and recent orders table
 
-Add utility classes:
-- `.surface-glow`: Subtle inner radial gradient overlay on cards when hovered — replaces flat `hover:bg-accent`
-- `.status-pulse`: CSS animation for status dots — a soft scale+opacity pulse (replaces static dots)
-- `.gradient-border`: A 1px border that subtly shifts from `border-color` to `primary/20` — for active/selected cards
+**D. Tablet POS partially integrated**
+- Already has local order management but doesn't persist to DB
+- Fix: On order creation/update, sync to `orders` table; on payment, update status
 
-### 2. KPI Cards Enhancement
-**File**: `src/pages/admin/AdminDashboard.tsx`
-
-- Replace flat `kpi-stripe` (solid 3px bar) with a gradient stripe that fades from the status color to transparent horizontally
-- Add a very subtle radial glow in the top-left corner of each card (Gemini's "concentrated energy" metaphor)
-- Values animate in with a gentle `fade-in` + counter effect on mount
-
-### 3. Table Status Cards — Living Indicators
-**File**: `src/components/tablet/FloorPanel.tsx`
-
-- Status dots get `.status-pulse` animation (subtle breathing effect, 3s cycle)
-- Selected table card gets a soft gradient border glow instead of solid `ring-2`
-- Available tables get a very subtle green radial glow on hover (inviting, Gemini's "discovery" concept)
-- Transition border-color and box-shadow with `transition-all duration-300 ease-out` (smoother than current)
-
-### 4. Refined Shadows & Surface Depth
-**File**: `src/index.css` + `tailwind.config.ts`
-
-Add custom box-shadows that use tinted colors instead of pure black:
-- `shadow-soft`: `0 1px 3px hsl(var(--primary) / 0.04), 0 4px 12px hsl(var(--primary) / 0.06)` — for cards
-- `shadow-elevated`: Deeper tinted shadow for popovers/sheets
-- `.uniweb-card` gets `shadow-soft` by default; on hover transitions to `shadow-elevated`
-
-Dark mode shadows use `hsl(0 0% 0% / 0.3)` for depth without washing out.
-
-### 5. Smoother Micro-Animations
-**File**: `tailwind.config.ts` keyframes + `src/index.css`
-
-- `status-pulse`: `scale(1) → scale(1.4) → scale(1)` with `opacity(1) → opacity(0.6) → opacity(1)`, 3s infinite
-- `shimmer`: A horizontal gradient sweep for loading states (Gemini's "thinking" indicator)
-- `glow-in`: Radial gradient opacity from 0 to target, 0.4s ease-out — for card mount
-- `slide-fade`: Combined translateY(6px)+opacity(0) → translateY(0)+opacity(1) — replaces current `fadeUp`
-- Update all `transition-colors` to `transition-all duration-200 ease-out` for smoother feel
-
-### 6. Active Navigation Glow
-**Files**: `src/pages/admin/AdminLayout.tsx`, `src/components/tablet/FloorPanel.tsx`
-
-- Active sidebar nav item gets a subtle left-edge gradient (2px wide, primary color fading to transparent vertically) instead of flat `bg-primary` block
-- Active category pills in MenuComposer get a soft gradient background (primary → primary/80) instead of flat color
-
-### 7. Frosted Glass Effect on Overlays
-**File**: `src/index.css`
-
-- Add `.glass` utility: `backdrop-filter: blur(12px); background: hsl(var(--card) / 0.85);`
-- Apply to payment sheet overlay, modifier dialog backdrop, and mobile bottom sheets
-- Gives the "ethereal, in-between" quality described in the Gemini article
-
-### 8. Homepage Entry Cards
-**File**: `src/pages/Index.tsx`
-
-- Icon containers get a subtle radial gradient background (from `primary/10` center to transparent edge)
-- On hover, the gradient intensifies and slightly expands (scale 1.05 on the icon container)
-- Card border transitions to a gradient-like glow via `box-shadow` rather than `border-color` alone
-
-### 9. Dark Mode Ambient Glow
-**File**: `src/index.css` (`.dark` section)
-
-- Cards in dark mode get a very faint `box-shadow: 0 0 0 1px hsl(var(--border)), 0 0 24px -8px hsl(var(--primary) / 0.08)` — ambient blue glow that makes the UI feel more spatial
-- Active elements get stronger glow intensity
+**E. Mobile POS same as Tablet**
+- Uses local state only; needs DB persistence
 
 ---
 
-## Technical Details
+## Implementation Plan
 
-**Files modified** (~6):
-- `src/index.css` — gradient variables, utility classes, animations, glass effect, dark mode glow
-- `tailwind.config.ts` — custom shadows, new keyframes/animations
-- `src/pages/admin/AdminDashboard.tsx` — gradient KPI stripes, glow accents
-- `src/components/tablet/FloorPanel.tsx` — pulsing status dots, gradient borders
-- `src/pages/Index.tsx` — gradient icon containers, hover glow
-- `src/pages/admin/AdminLayout.tsx` — active nav gradient edge
+### File Changes
 
-**No structural changes**. All enhancements are additive CSS/className updates. No new dependencies needed. Every effect uses CSS custom properties tied to existing design tokens, so brand colors are maintained automatically in both light and dark modes.
+**1. `src/pages/admin/AdminSettings.tsx`** — Fix toggle UI
+- Import `Switch` from `@/components/ui/switch`
+- Replace both hand-rolled toggle buttons with `<Switch checked={...} onCheckedChange={...} />`
+- Remove the manual `w-11 h-6 rounded-full` button + absolute span pattern
+
+**2. `src/pages/admin/AdminSales.tsx`** — Full BI rewrite
+- Import `supabase` client, `recharts` components via `chart.tsx` wrappers
+- Add `useEffect` to fetch orders data with date range filter
+- Compute KPIs from queried data (with fallback to mock if no DB data)
+- Sections: KPI cards, daily bar chart (Recharts `BarChart`), hourly heatmap (CSS grid), top items table, channel breakdown (Recharts `PieChart`), payment mix
+- Date range tabs: Today / 7 Days / 30 Days / Custom
+- All monetary values with 2-decimal formatting
+
+**3. `src/lib/db-orders.ts`** (new) — Shared order persistence helpers
+- `insertOrder(order)` — insert into `orders` table
+- `insertOrderItems(orderId, items)` — insert into `order_items` + `order_item_modifiers`
+- `updateOrderStatus(orderId, status)` — update `orders.status`
+- `fetchActiveOrders()` — for KDS/Dashboard
+- `fetchOrdersInRange(from, to)` — for Sales BI
+- Uses `supabase` client
+
+**4. `src/pages/KioskOrdering.tsx`** — Wire payment to DB
+- On `handlePaymentComplete`, call `insertOrder` + `insertOrderItems` with `service_mode: 'kiosk'`
+
+**5. `src/pages/QROrdering.tsx`** — Wire payment to DB
+- On payment/submit, call `insertOrder` + `insertOrderItems` with `service_mode: 'qr'`, `table_id` set
+
+**6. `src/pages/admin/AdminKDS.tsx`** — Read from DB
+- Replace `sampleOrders` import with `useEffect` + `supabase` query for active order items
+- Add realtime subscription on `order_items` table for live updates
+- Keep same UI, just change data source
+
+**7. `src/pages/admin/AdminDashboard.tsx`** — Read from DB
+- Replace static `stats` and `recentOrders` with DB queries (today's orders)
+- Compute live KPIs: revenue, order count, unique customers, avg wait
+
+**8. `src/pages/TabletPOS.tsx`** — Persist orders to DB
+- On `handleAddItem` (first item or order creation), insert order to DB
+- On `handlePaymentComplete`, update order status to `paid` in DB
+- On order state changes, sync to DB
+
+**9. `src/pages/MobilePOS.tsx`** — Same DB persistence as Tablet
+
+### Database
+No schema changes needed — all tables already exist with proper columns and RLS.
+
+### Priority Order
+1. Fix Settings toggle (quick)
+2. Create `db-orders.ts` shared helpers
+3. Wire Kiosk + QR to DB (customer-facing, highest impact)
+4. Wire KDS + Dashboard to DB (admin visibility)
+5. Rewrite Sales BI page
+6. Wire Tablet + Mobile POS to DB
 
