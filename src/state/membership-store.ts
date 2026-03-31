@@ -22,7 +22,7 @@ type Listener = () => void;
 
 let tiers: MemberTier[] = [
   {
-    id: "tier-member", name: "Member", nameZh: "会员", color: "gray",
+    id: "tier-member", name: "Member", nameZh: "会员", color: "stone",
     sortOrder: 0, requirements: {}, discountPercent: 0, pointsMultiplier: 1.0,
     perks: ["Welcome drink on first visit"],
   },
@@ -33,19 +33,19 @@ let tiers: MemberTier[] = [
     perks: ["Birthday reward", "5% on all orders"],
   },
   {
-    id: "tier-gold", name: "Gold", nameZh: "金卡", color: "amber",
+    id: "tier-gold", name: "Gold", nameZh: "金卡", color: "sand",
     sortOrder: 2, requirements: { minSpend: 500, minVisits: 15 },
     discountPercent: 8, pointsMultiplier: 1.5,
     perks: ["Priority seating", "Birthday reward", "8% on all orders"],
   },
   {
-    id: "tier-platinum", name: "Platinum", nameZh: "铂金", color: "violet",
+    id: "tier-platinum", name: "Platinum", nameZh: "铂金", color: "lavender",
     sortOrder: 3, requirements: { minSpend: 1500, minVisits: 30 },
     discountPercent: 12, pointsMultiplier: 2.0,
     perks: ["Priority seating", "Free delivery", "Birthday double points", "12% on all orders"],
   },
   {
-    id: "tier-diamond", name: "Diamond", nameZh: "钻石", color: "cyan",
+    id: "tier-diamond", name: "Diamond", nameZh: "钻石", color: "sky",
     sortOrder: 4, requirements: { minSpend: 3000, minVisits: 50 },
     discountPercent: 15, pointsMultiplier: 3.0,
     perks: ["All Platinum perks", "Exclusive events", "Complimentary dessert", "15% on all orders"],
@@ -121,15 +121,15 @@ export const getTierDiscount = (tierId: string): number => {
   return tier?.discountPercent ?? 0;
 };
 
-/** Tier color mapping for Tailwind classes */
-export const TIER_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  gray:   { bg: "bg-gray-100 dark:bg-gray-800", text: "text-gray-600 dark:text-gray-400", border: "border-gray-300" },
-  slate:  { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-600 dark:text-slate-400", border: "border-slate-300" },
-  amber:  { bg: "bg-amber-100 dark:bg-amber-900", text: "text-amber-700 dark:text-amber-400", border: "border-amber-300" },
-  violet: { bg: "bg-violet-100 dark:bg-violet-900", text: "text-violet-700 dark:text-violet-400", border: "border-violet-300" },
-  cyan:   { bg: "bg-cyan-100 dark:bg-cyan-900", text: "text-cyan-700 dark:text-cyan-400", border: "border-cyan-300" },
-  rose:   { bg: "bg-rose-100 dark:bg-rose-900", text: "text-rose-700 dark:text-rose-400", border: "border-rose-300" },
-  emerald:{ bg: "bg-emerald-100 dark:bg-emerald-900", text: "text-emerald-700 dark:text-emerald-400", border: "border-emerald-300" },
-  blue:   { bg: "bg-blue-100 dark:bg-blue-900", text: "text-blue-700 dark:text-blue-400", border: "border-blue-300" },
-  orange: { bg: "bg-orange-100 dark:bg-orange-900", text: "text-orange-700 dark:text-orange-400", border: "border-orange-300" },
+/** Japanese-inspired low-saturation tier color palette */
+export const TIER_COLORS: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+  stone:   { bg: "bg-stone-50 dark:bg-stone-900/40",       text: "text-stone-500 dark:text-stone-400",           border: "border-stone-200 dark:border-stone-700",       dot: "bg-stone-400" },
+  slate:   { bg: "bg-slate-50 dark:bg-slate-900/40",       text: "text-slate-500 dark:text-slate-400",           border: "border-slate-200 dark:border-slate-700",       dot: "bg-slate-400" },
+  sand:    { bg: "bg-amber-50/60 dark:bg-amber-950/20",    text: "text-amber-600/80 dark:text-amber-400/80",     border: "border-amber-200/60 dark:border-amber-800/40", dot: "bg-amber-400/80" },
+  sage:    { bg: "bg-emerald-50/50 dark:bg-emerald-950/20",text: "text-emerald-600/70 dark:text-emerald-400/70", border: "border-emerald-200/50 dark:border-emerald-800/30", dot: "bg-emerald-400/70" },
+  lavender:{ bg: "bg-violet-50/50 dark:bg-violet-950/20",  text: "text-violet-500/70 dark:text-violet-400/70",   border: "border-violet-200/50 dark:border-violet-800/30",dot: "bg-violet-400/70" },
+  blush:   { bg: "bg-rose-50/40 dark:bg-rose-950/15",      text: "text-rose-500/60 dark:text-rose-400/60",       border: "border-rose-200/40 dark:border-rose-800/25",   dot: "bg-rose-400/60" },
+  sky:     { bg: "bg-sky-50/50 dark:bg-sky-950/20",        text: "text-sky-600/70 dark:text-sky-400/70",         border: "border-sky-200/50 dark:border-sky-800/30",     dot: "bg-sky-400/70" },
+  warm:    { bg: "bg-orange-50/40 dark:bg-orange-950/15",  text: "text-orange-500/70 dark:text-orange-400/60",   border: "border-orange-200/40 dark:border-orange-800/25",dot: "bg-orange-400/60" },
+  ink:     { bg: "bg-zinc-100/60 dark:bg-zinc-800/40",     text: "text-zinc-600/80 dark:text-zinc-400/70",       border: "border-zinc-200/60 dark:border-zinc-700/40",   dot: "bg-zinc-500/70" },
 };
