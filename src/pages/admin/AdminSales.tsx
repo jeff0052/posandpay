@@ -139,7 +139,7 @@ const AdminSales: React.FC = () => {
   ];
 
   return (
-    <div className="p-7">
+    <div className="p-4 sm:p-7">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Sales & Analytics</h1>
@@ -163,7 +163,7 @@ const AdminSales: React.FC = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {kpis.map((s, i) => (
           <div key={s.label} className="uniweb-card card-glow surface-glow relative overflow-hidden p-5"
             style={{ animationDelay: `${i * 60}ms` }}>
@@ -177,7 +177,7 @@ const AdminSales: React.FC = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Daily Sales Chart */}
         <div className="uniweb-card surface-glow p-5">
           <div className="text-sm font-semibold text-foreground mb-4">Daily Sales</div>
@@ -227,7 +227,7 @@ const AdminSales: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Hourly Heatmap */}
         <div className="uniweb-card surface-glow p-5">
           <div className="text-sm font-semibold text-foreground mb-4">Order Volume Heatmap</div>

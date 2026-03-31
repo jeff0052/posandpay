@@ -72,14 +72,14 @@ const AdminCRM: React.FC = () => {
   };
 
   return (
-    <div className="p-7">
+    <div className="p-4 sm:p-7">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground tracking-tight">Customer Management</h1>
         <p className="text-[13px] text-muted-foreground mt-1">{totalCustomers} customers</p>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { label: "Total Customers", value: totalCustomers, stripe: "bg-primary" },
           { label: "New This Month", value: newThisMonth, stripe: "bg-status-green" },
@@ -104,7 +104,7 @@ const AdminCRM: React.FC = () => {
         <TabsContent value="customers">
           {/* Search + Segment Filters */}
           <div className="flex items-center gap-3 mb-4">
-            <div className="relative w-64">
+            <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search customers..." className="w-full h-10 pl-10 pr-4 rounded-[9px] bg-card border-[1.5px] border-border text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-all" />
             </div>
@@ -144,7 +144,7 @@ const AdminCRM: React.FC = () => {
 
                   {expanded && (
                     <div className="px-4 pb-4 border-t border-border pt-4 space-y-4">
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <div className="section-label mb-2">Contact</div>
                           <div className="space-y-1 text-[13px]">

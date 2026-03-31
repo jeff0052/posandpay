@@ -45,7 +45,7 @@ const AdminQueue: React.FC = () => {
   };
 
   return (
-    <div className="p-7">
+    <div className="p-4 sm:p-7">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Queue Management</h1>
@@ -62,7 +62,7 @@ const AdminQueue: React.FC = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { label: "Currently Waiting", value: stats.waitingCount, icon: Users, stripe: "bg-status-amber" },
           { label: "Avg Wait Time", value: `${stats.averageWait}m`, icon: Clock, stripe: "bg-primary" },
@@ -135,7 +135,7 @@ const AdminQueue: React.FC = () => {
       {/* Add Dialog */}
       {showAdd && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center" onClick={() => setShowAdd(false)}>
-          <div className="bg-card rounded-xl border border-border p-6 w-[400px] space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-card rounded-xl border border-border p-6 w-full max-w-[400px] mx-4 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-foreground">Add to Queue</h3>
               <button onClick={() => setShowAdd(false)} className="p-1 rounded hover:bg-accent"><X className="h-4 w-4" /></button>

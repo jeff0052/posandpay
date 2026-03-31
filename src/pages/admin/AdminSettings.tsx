@@ -17,13 +17,13 @@ const AdminSettings: React.FC = () => {
   ];
 
   return (
-    <div className="p-7">
+    <div className="p-4 sm:p-7">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground tracking-tight">Settings</h1>
         <p className="text-[13px] text-muted-foreground mt-1">Configure your outlet</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         {settingsCards.map(item => (
           <button key={item.title} className="uniweb-card surface-glow p-5 text-left hover:border-primary/30 transition-all cursor-pointer group">
             <div className="flex items-center gap-3 mb-3">

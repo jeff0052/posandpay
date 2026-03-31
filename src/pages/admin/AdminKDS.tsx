@@ -87,13 +87,13 @@ const AdminKDS: React.FC = () => {
   }, []);
 
   return (
-    <div className="p-7">
+    <div className="p-4 sm:p-7">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground tracking-tight">KDS Monitor</h1>
         <p className="text-[13px] text-muted-foreground mt-1">{tickets.length} active tickets</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {(["new", "preparing", "ready"] as const).map(status => {
           const config = statusConfig[status];
           const statusTickets = tickets.filter(t => t.status === status);

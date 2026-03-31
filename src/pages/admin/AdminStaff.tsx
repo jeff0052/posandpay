@@ -11,7 +11,7 @@ const roleStyles: Record<string, { badge: string; label: string }> = {
 };
 
 const AdminStaff: React.FC = () => (
-  <div className="p-7">
+  <div className="p-4 sm:p-7">
     <div className="flex items-center justify-between mb-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground tracking-tight">Staff & Permissions</h1>
@@ -20,7 +20,7 @@ const AdminStaff: React.FC = () => (
       <Button className="rounded-lg"><Plus className="h-4 w-4 mr-1.5" />Add Staff</Button>
     </div>
 
-    <div className="uniweb-card">
+    <div className="uniweb-card overflow-x-auto">
       <table className="w-full">
         <thead className="table-header">
           <tr>
