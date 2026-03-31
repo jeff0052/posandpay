@@ -21,6 +21,7 @@ The POS currently has no configurable distinction between fast-food and restaura
 - KDS UI changes (already functional as read-only monitor)
 - QR/Kiosk flow changes (already have their own payment mode settings)
 - Supabase schema migration (mock data mode)
+- Mobile POS changes (deferred to follow-up iteration; tablet-first)
 
 ## 4. Data Model
 
@@ -29,7 +30,7 @@ The POS currently has no configurable distinction between fast-food and restaura
 Add to `MerchantSettings` in `src/state/settings-store.ts`:
 
 ```typescript
-type ServiceFlow = "restaurant" | "fast-food";
+export type ServiceFlow = "restaurant" | "fast-food";
 
 interface MerchantSettings {
   // existing fields unchanged
@@ -44,12 +45,25 @@ interface MerchantSettings {
 
 Export the `ServiceFlow` type for use in POS components.
 
-### 4.2 No Order Model Changes
+### 4.2 Order State Machine Update
 
-The existing `Order` and `OrderItem` models already support the needed fields:
-- `Order.status`: open → sent → preparing → ready → served → paid
-- `OrderItem.status`: new → preparing → ready → served
-- `OrderItem.fired_at`: timestamp set when fired to kitchen
+The existing state machine in `src/lib/order-state-machine.ts` must be updated to support fast-food mode's direct `open → paid` transition:
+
+```typescript
+const validTransitions: Record<OrderStatus, OrderStatus[]> = {
+  open: ["sent", "paid", "void"],  // added "paid" for fast-food flow
+  sent: ["preparing", "void"],
+  preparing: ["ready", "void"],
+  ready: ["served", "void"],
+  served: ["paid", "void"],
+  paid: [],
+  void: [],
+};
+```
+
+### 4.3 Field Naming Clarification
+
+The in-memory model uses **camelCase** (`OrderItem.firedAt` in `mock-data.ts`). The DB layer uses **snake_case** (`fired_at` in `db-orders.ts`). All handler code must set `firedAt` on OrderItem objects. The DB persistence layer handles the casing conversion.
 
 ## 5. Behavior by Mode
 
@@ -58,9 +72,11 @@ The existing `Order` and `OrderItem` models already support the needed fields:
 | Step | Action | State Changes |
 |------|--------|---------------|
 | 1. Select table, add items | Items in order | order.status = "open", table.status = "ordering" |
-| 2. Click "Send to Kitchen" | Fire to KDS | order.status = "sent", items.fired_at = now, items.status = "new", table.status = "ordered" |
+| 2. Click "Send to Kitchen" | Fire to KDS | order.status = "sent", items.firedAt = now, items.status = "new"; if order.tableId: table.status = "ordered" |
 | 3. Kitchen prepares | KDS workflow | items.status progression via KDS |
-| 4. Click "Pay" | Payment flow | order.status = "paid", table.status = "dirty" |
+| 4. Click "Pay" | Payment flow | order.status = "paid"; if order.tableId: table.status = "dirty" |
+
+**Note:** Table status changes only apply when `order.tableId` is set (not for walk-in/takeaway/delivery orders without a table).
 
 **CheckPanel behavior:**
 - When `order.status === "open"` and order has items: show **"Send to Kitchen"** button (primary blue)
@@ -72,8 +88,10 @@ The existing `Order` and `OrderItem` models already support the needed fields:
 | Step | Action | State Changes |
 |------|--------|---------------|
 | 1. Select table/walk-in, add items | Items in order | order.status = "open", table.status = "ordering" |
-| 2. Click "Pay" | Payment flow | order.status = "paid" |
-| 3. After payment completes | Auto-fire to kitchen | items.fired_at = now, items.status = "new", table.status = "dirty" |
+| 2. Click "Pay" | Payment flow | order.status = "paid" (direct open→paid) |
+| 3. After payment completes | Auto-fire to kitchen | items.firedAt = now, items.status = "new"; if order.tableId: table.status = "dirty" |
+
+**Auto-fire sequence:** After `order.status = "paid"` is set, then set `firedAt` on all items and update item status to `"new"`. Item-level updates are in-memory only (no DB call needed in mock mode). The `updateOrderStatus()` call persists the order status to DB.
 
 **CheckPanel behavior:**
 - Always show **"Pay $XX.XX"** button (current behavior, no change)
@@ -87,17 +105,16 @@ The existing `Order` and `OrderItem` models already support the needed fields:
 
 ```
 ┌─────────────────────────────────────────────┐
-│ 🍽 Service Flow                              │
+│ Service Flow                                 │
 │ How orders are processed at POS terminals    │
 │                                              │
 │ ┌─────────────┐  ┌─────────────┐            │
-│ │ 🍴          │  │ ⚡          │            │
 │ │ Restaurant  │  │ Fast Food   │            │
 │ │ Order →     │  │ Order →     │            │
 │ │ Kitchen →   │  │ Pay →       │            │
 │ │ Dine → Pay  │  │ Kitchen →   │            │
 │ │             │  │ Pickup      │            │
-│ │  ✓ Active   │  │             │            │
+│ │  Active     │  │             │            │
 │ └─────────────┘  └─────────────┘            │
 └─────────────────────────────────────────────┘
 ```
@@ -107,7 +124,7 @@ The existing `Order` and `OrderItem` models already support the needed fields:
 
 ### 6.2 CheckPanel (Tablet POS)
 
-**Restaurant mode changes to bottom section (around line 311-354 of CheckPanel.tsx):**
+**Changes to the Totals & Pay section at the bottom of CheckPanel.tsx:**
 
 Current: Always shows "Pay $XX.XX" button.
 
@@ -125,22 +142,18 @@ New conditional:
 ### 6.3 TabletPOS Page
 
 **New handler: `handleSendToKitchen`**
-- Transitions order status: open → sent
-- Sets `fired_at` on all items to current timestamp
-- Updates table status: ordering → ordered
-- Persists via `updateOrderStatus()` DB call
+- Transitions order status: open → sent (via `canTransition` check)
+- Sets `firedAt = new Date().toISOString()` on all items in the current order (in-memory)
+- Sets item status to `"new"` on all items
+- If `order.tableId`: updates table status ordering → ordered
+- Persists order status via `updateOrderStatus()` DB call
 
 **Updated handler: `handlePaymentComplete`**
-- In fast-food mode: after payment, also set `fired_at` on items and update item status to "new" (auto-fire)
+- In fast-food mode (`serviceFlow === "fast-food"`): after setting order status to "paid", also set `firedAt = new Date().toISOString()` and `status = "new"` on all items (in-memory auto-fire)
 
 ### 6.4 Mobile POS
 
-**Restaurant mode:**
-- After adding items in `menu` step, the `review` step shows "Send to Kitchen" button
-- After sending, transitions to `payment` step with "Pay" button
-
-**Fast Food mode:**
-- Current behavior unchanged — `review` step shows "Pay" directly
+**Deferred to follow-up iteration.** Tablet POS is the priority. Mobile POS will be updated in a subsequent task to mirror the same logic.
 
 ## 7. Component Architecture
 
@@ -149,10 +162,10 @@ New conditional:
 | File | Changes |
 |------|---------|
 | `src/state/settings-store.ts` | Add `serviceFlow: ServiceFlow` field and type export |
+| `src/lib/order-state-machine.ts` | Add `"paid"` to valid transitions from `"open"` |
 | `src/pages/admin/AdminSettings.tsx` | Add Service Flow card UI section |
 | `src/components/tablet/CheckPanel.tsx` | Add `serviceFlow` prop, conditional Send to Kitchen / Pay button |
 | `src/pages/TabletPOS.tsx` | Add `handleSendToKitchen`, pass `serviceFlow` to CheckPanel, auto-fire in fast-food payment |
-| `src/pages/MobilePOS.tsx` | Read serviceFlow, conditionally show Send/Pay in review step |
 | `src/hooks/useLanguage.tsx` | Add new translation keys |
 
 ### No New Files
@@ -161,7 +174,7 @@ All changes are modifications to existing components. No new component files nee
 
 ## 8. Localization
 
-New keys for `useLanguage.tsx`:
+Reuse existing `send_to_kitchen` key (already has EN: "Send to Kitchen", ZH: "下单"). Add other new keys:
 
 | Key | EN | ZH |
 |-----|----|----|
@@ -171,24 +184,21 @@ New keys for `useLanguage.tsx`:
 | fastFood | Fast Food | 快餐模式 |
 | restaurantDesc | Order → Kitchen → Dine → Pay | 点单 → 出餐 → 用餐 → 付款 |
 | fastFoodDesc | Order → Pay → Kitchen → Pickup | 点单 → 付款 → 出餐 → 取餐 |
-| sendToKitchen | Send to Kitchen | 下单到厨房 |
 | orderSent | Order Sent | 已下单 |
 | awaitingPayment | Awaiting Payment | 等待付款 |
-
-Note: `send_to_kitchen` key already exists in the dictionary but is unused. Replace with `sendToKitchen` for consistency, or reuse existing key.
 
 ## 9. Edge Cases
 
 1. **Mode switch with active orders**: Changing mode only affects new orders. Existing open orders continue with their current flow.
 2. **Empty order Send to Kitchen**: Button disabled when order has no items (same as current Pay button behavior).
-3. **Walk-in orders in restaurant mode**: Send to Kitchen still works — fires items, but no table status change (no table associated).
-4. **Takeaway/Delivery in restaurant mode**: These still follow restaurant flow — send to kitchen first, pay when picking up.
+3. **Walk-in orders in restaurant mode**: Send to Kitchen still works — fires items. No table status change since no table is associated (`order.tableId` is undefined).
+4. **Takeaway/Delivery in restaurant mode**: These still follow restaurant flow — send to kitchen first, pay when picking up. No table status changes.
 
 ## 10. Testing Considerations
 
 - Toggle between modes in Admin Settings, verify CheckPanel button changes
 - Restaurant: add items → Send to Kitchen → verify order status "sent" + table "ordered" → Pay
-- Fast Food: add items → Pay → verify items auto-fired (fired_at set)
+- Fast Food: add items → Pay → verify items auto-fired (firedAt set)
 - Mode switch doesn't affect existing open orders
 - Walk-in (no table) orders work in both modes
-- Mobile POS: same flow differences verified
+- Verify state machine allows open → paid in fast-food mode
