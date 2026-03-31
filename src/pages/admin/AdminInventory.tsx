@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Package, AlertTriangle, DollarSign, Clock, Search, Plus, ArrowUpDown, X } from "lucide-react";
+import { Package, AlertTriangle, DollarSign, Clock, Search, Plus, ArrowUpDown, X, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,10 @@ import {
   adjustStock, addPurchaseOrder, updatePOStatus,
   type InventoryItem, type StockMovement, type PurchaseOrder,
 } from "@/state/inventory-store";
+import { ReceivingForm } from "@/components/admin/ReceivingForm";
+import { InvoiceScanner } from "@/components/admin/InvoiceScanner";
+import { getLinkedMenuItems } from "@/state/recipe-store";
+import { getMenuItemsSnapshot } from "@/state/menu-store";
 
 const categoryLabels: Record<InventoryItem["category"], string> = {
   raw_ingredients: "Raw Ingredients",
@@ -32,6 +36,9 @@ const AdminInventory: React.FC = () => {
   const movements = useStockMovements();
   const purchaseOrders = usePurchaseOrders();
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("stock");
+  const [showReceiving, setShowReceiving] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const [showAdjust, setShowAdjust] = useState<string | null>(null);
   const [adjustQty, setAdjustQty] = useState("");
   const [adjustType, setAdjustType] = useState<StockMovement["type"]>("receive");
@@ -85,12 +92,18 @@ const AdminInventory: React.FC = () => {
         ))}
       </div>
 
-      <Tabs defaultValue="stock" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="stock">Stock List</TabsTrigger>
-          <TabsTrigger value="po">Purchase Orders</TabsTrigger>
-          <TabsTrigger value="log">Movement Log</TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="stock">Stock List</TabsTrigger>
+            <TabsTrigger value="po">Purchase Orders</TabsTrigger>
+            <TabsTrigger value="log">Movement Log</TabsTrigger>
+            <TabsTrigger value="receiving">Receiving</TabsTrigger>
+          </TabsList>
+          <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => setShowScanner(true)}>
+            <Camera className="h-3.5 w-3.5" /> Scan Invoice
+          </Button>
+        </div>
 
         <TabsContent value="stock">
           <div className="relative w-72 mb-4">
@@ -100,7 +113,7 @@ const AdminInventory: React.FC = () => {
 
           <div className="uniweb-card overflow-hidden">
             <table className="w-full">
-              <thead className="table-header"><tr><th>Item</th><th>SKU</th><th>Category</th><th>Stock</th><th>Status</th><th>Cost</th><th>Supplier</th><th></th></tr></thead>
+              <thead className="table-header"><tr><th>Item</th><th>SKU</th><th>Category</th><th>Stock</th><th>Status</th><th>Cost</th><th>Supplier</th><th>Linked</th><th></th></tr></thead>
               <tbody>
                 {filtered.map(item => {
                   const status = getStockStatus(item);
@@ -121,6 +134,16 @@ const AdminInventory: React.FC = () => {
                       <td><span className={cn("status-badge", status.color)}>{status.label}</span></td>
                       <td className="font-mono text-[12px]">${item.costPerUnit.toFixed(2)}/{unitLabels[item.unit]}</td>
                       <td className="text-[12px] text-muted-foreground">{item.supplier || "—"}</td>
+                      <td>
+                        {(() => {
+                          const count = getLinkedMenuItems(item.id).length;
+                          return count > 0 ? (
+                            <span className="status-badge bg-primary/10 text-primary text-[11px]">{count}</span>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground">—</span>
+                          );
+                        })()}
+                      </td>
                       <td>
                         <Button variant="ghost" size="sm" className="h-7 text-[11px]" onClick={() => setShowAdjust(item.id)}>
                           <ArrowUpDown className="h-3 w-3 mr-1" /> Adjust
@@ -181,7 +204,23 @@ const AdminInventory: React.FC = () => {
             </table>
           </div>
         </TabsContent>
+
+        <TabsContent value="receiving">
+          <div className="uniweb-card surface-glow p-5">
+            <ReceivingForm onClose={() => setActiveTab("stock")} />
+          </div>
+        </TabsContent>
       </Tabs>
+
+      {/* Invoice Scanner Modal */}
+      {showScanner && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowScanner(false)} />
+          <div className="relative w-full max-w-[500px] mx-4 bg-card rounded-xl border border-border p-5 max-h-[90vh] overflow-y-auto">
+            <InvoiceScanner onClose={() => setShowScanner(false)} />
+          </div>
+        </div>
+      )}
 
       {/* Adjust Stock Dialog */}
       {showAdjust && (
