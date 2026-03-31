@@ -128,10 +128,10 @@ export const MenuComposer: React.FC<MenuComposerProps> = ({ onAddItem, selectedT
               <button
                 key={item.id}
                 onClick={() => handleItemClick(item)}
-                disabled={!item.available || !currentOrder}
+                disabled={!item.available || (!currentOrder && !selectedTable)}
                 className={cn(
                   "relative rounded-lg border-1.5 text-left transition-all duration-300 ease-out group overflow-hidden",
-                  item.available && currentOrder
+                  item.available && (currentOrder || selectedTable)
                     ? "bg-card border-border hover:border-primary/40 hover:shadow-soft cursor-pointer"
                     : "bg-accent border-border/50 opacity-60 cursor-not-allowed"
                 )}
@@ -184,7 +184,7 @@ export const MenuComposer: React.FC<MenuComposerProps> = ({ onAddItem, selectedT
                     <div className="text-[10px] text-destructive mt-1 font-semibold">{t("unavailable")}</div>
                   )}
                 </div>
-                {item.available && currentOrder && (
+                {item.available && (currentOrder || selectedTable) && (
                   <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
                       <Plus className="h-3.5 w-3.5 text-primary-foreground" />
