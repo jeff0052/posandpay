@@ -440,12 +440,12 @@ export const FloorPanel: React.FC<FloorPanelProps> = ({
       {/* Quick Actions */}
       {!isFullscreen && viewMode === "floor" && (
         <div className="p-3 border-t border-border">
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="flex-1 justify-center gap-2 text-xs rounded-lg h-[44px]" onClick={() => onCreateWalkIn("takeaway")}>
-              <ShoppingBag className="h-3.5 w-3.5" />{t("takeaway_order")}
+          <div className="flex gap-1.5">
+            <Button variant="outline" size="sm" className="flex-1 min-w-0 justify-center gap-1.5 text-[11px] rounded-lg h-[40px] px-2" onClick={() => onCreateWalkIn("takeaway")}>
+              <ShoppingBag className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{t("takeaway_order")}</span>
             </Button>
-            <Button variant="outline" size="sm" className="flex-1 justify-center gap-2 text-xs rounded-lg h-[44px]" onClick={() => onCreateWalkIn("delivery")}>
-              <Truck className="h-3.5 w-3.5" />{t("delivery_order")}
+            <Button variant="outline" size="sm" className="flex-1 min-w-0 justify-center gap-1.5 text-[11px] rounded-lg h-[40px] px-2" onClick={() => onCreateWalkIn("delivery")}>
+              <Truck className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{t("delivery_order")}</span>
             </Button>
           </div>
         </div>
