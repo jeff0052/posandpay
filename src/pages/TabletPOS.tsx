@@ -9,6 +9,7 @@ import type { PaidOrder } from "@/components/tablet/history/types";
 import { tables as mockTables, sampleOrders, reservations as mockReservations, type Table, type Order, type OrderItem, type ServiceMode, type Reservation, type CancelReason } from "@/data/mock-data";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useSettings } from "@/state/settings-store";
 import { getMenuItemsSnapshot } from "@/state/menu-store";
 import { cn } from "@/lib/utils";
 import { insertOrder, insertOrderItems, updateOrderStatus, updateOrderTotals } from "@/lib/db-orders";
@@ -68,6 +69,7 @@ const MAX_PANEL_FRAC = 1 / 3;
 
 const TabletPOS: React.FC = () => {
   const { t } = useLanguage();
+  const settings = useSettings();
   const [tables, setTables] = useState(mockTables);
   const [orders, setOrders] = useState(sampleOrders);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
@@ -228,6 +230,34 @@ const TabletPOS: React.FC = () => {
     setCurrentOrder(null);
   }, []);
 
+  // Send order to kitchen (restaurant mode)
+  const handleSendToKitchen = useCallback(() => {
+    if (!currentOrder || currentOrder.status !== "open" || currentOrder.items.length === 0) return;
+
+    // Fire all items to kitchen
+    const firedOrder: Order = {
+      ...currentOrder,
+      status: "sent" as const,
+      items: currentOrder.items.map(item => ({
+        ...item,
+        firedAt: new Date().toISOString(),
+        status: "new" as const,
+      })),
+    };
+    setCurrentOrder(firedOrder);
+    setOrders(prev => prev.map(o => o.id === firedOrder.id ? firedOrder : o));
+
+    // Update table status if table-based order
+    if (firedOrder.tableId) {
+      setTables(prev => prev.map(t =>
+        t.id === firedOrder.tableId ? { ...t, status: "ordered" as const } : t
+      ));
+    }
+
+    // Persist order status
+    updateOrderStatus(firedOrder.id, "sent");
+  }, [currentOrder]);
+
   const handleCreateWalkIn = useCallback((mode: ServiceMode) => {
     const newOrder: Order = {
       id: `o-${Date.now()}`,
@@ -387,6 +417,21 @@ const TabletPOS: React.FC = () => {
 
       // Persist payment to DB
       await updateOrderStatus(currentOrder.id, "paid");
+
+      // Fast-food mode: auto-fire items to kitchen after payment
+      if (settings.serviceFlow === "fast-food" && currentOrder) {
+        setOrders(prev => prev.map(o =>
+          o.id === currentOrder.id ? {
+            ...o,
+            status: "paid" as const,
+            items: o.items.map(item => ({
+              ...item,
+              firedAt: item.firedAt || new Date().toISOString(),
+              status: "new" as const,
+            })),
+          } : o
+        ));
+      }
     }
     setShowPayment(false);
     if (currentOrder?.tableId) {
@@ -558,6 +603,8 @@ const TabletPOS: React.FC = () => {
                   onUpdateQuantity={handleUpdateQuantity}
                   onRemoveItem={handleRemoveItem}
                   onPay={() => setShowPayment(true)}
+                  serviceFlow={settings.serviceFlow}
+                  onSendToKitchen={handleSendToKitchen}
                 />
               ) : (
                 <OrderHistory orders={paidOrders} onClose={() => setShowHistory(false)} />
