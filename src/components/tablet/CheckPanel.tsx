@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Minus, Plus, Trash2, Users, UtensilsCrossed, Split, X, ChefHat, Ban, Crown, Tag } from "lucide-react";
+import { Minus, Plus, Trash2, Users, User, UtensilsCrossed, Split, X, ChefHat, Ban, Crown, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type Order, type Table } from "@/data/mock-data";
@@ -16,9 +16,11 @@ interface CheckPanelProps {
   onSendToKitchen?: () => void;
   onVoidOrder?: () => void;
   linkedMember?: { name: string; tier: string; discountPercent: number } | null;
+  onMemberClick?: () => void;
+  balanceCredit?: number;
 }
 
-export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQuantity, onRemoveItem, onPay, serviceFlow = "restaurant", onSendToKitchen, onVoidOrder, linkedMember }) => {
+export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQuantity, onRemoveItem, onPay, serviceFlow = "restaurant", onSendToKitchen, onVoidOrder, linkedMember, onMemberClick, balanceCredit = 0 }) => {
   const { t } = useLanguage();
   const [appliedPromo, setAppliedPromo] = useState<{ type: "percentage" | "fixed"; value: number; label: string } | null>(null);
   const [manualDiscount, setManualDiscount] = useState<{ type: "percentage" | "fixed"; value: number } | null>(null);
@@ -56,7 +58,9 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
   const adjustedSubtotal = Math.round((order.subtotal - discountAmt) * 100) / 100;
   const serviceCharge = Math.round(adjustedSubtotal * 0.1 * 100) / 100;
   const gst = Math.round((adjustedSubtotal + serviceCharge) * 0.09 * 100) / 100;
-  const finalTotal = Math.round((adjustedSubtotal + serviceCharge + gst) * 100) / 100;
+  const totalBeforeCredit = Math.round((adjustedSubtotal + serviceCharge + gst) * 100) / 100;
+  const appliedCredit = Math.min(balanceCredit, totalBeforeCredit);
+  const finalTotal = Math.round((totalBeforeCredit - appliedCredit) * 100) / 100;
   const splitAmount = splitCount > 1 ? Math.round(finalTotal / splitCount * 100) / 100 : finalTotal;
 
   return (
@@ -153,6 +157,16 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
             >
               <Tag className="h-3 w-3" />
               {t("promo")}
+            </button>
+            <button
+              onClick={onMemberClick}
+              className={cn(
+                "flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors min-h-[36px]",
+                linkedMember ? "bg-status-green/10 text-status-green" : "text-muted-foreground hover:bg-accent"
+              )}
+            >
+              <User className="h-3 w-3" />
+              {linkedMember ? linkedMember.name.split(" ")[0] : t("member")}
             </button>
           </div>
 
@@ -292,6 +306,12 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
           <span>{t("gst")}</span>
           <span className="font-mono">${gst.toFixed(2)}</span>
         </div>
+        {appliedCredit > 0 && (
+          <div className="flex justify-between text-[13px] text-primary">
+            <span>{t("balance_credit")}</span>
+            <span className="font-mono">-${appliedCredit.toFixed(2)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-base font-bold text-foreground pt-2 border-t border-border">
           <span>{t("total")}</span>
           <span className="font-mono">${finalTotal.toFixed(2)}</span>

@@ -84,6 +84,7 @@ const TabletPOS: React.FC = () => {
   const [tableManagement, setTableManagement] = useState(true);
   const [showMemberDialog, setShowMemberDialog] = useState(false);
   const [linkedMember, setLinkedMember] = useState<CustomerFull | null>(null);
+  const [balanceCredit, setBalanceCredit] = useState(0);
   const [reservations, setReservations] = useState<Reservation[]>(mockReservations);
 
   // Resizable panel widths (as fractions of screen width)
@@ -610,19 +611,6 @@ const TabletPOS: React.FC = () => {
                   </span>
                 )}
               </button>
-              {/* Member identify button */}
-              <button
-                onClick={() => setShowMemberDialog(true)}
-                className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border-1.5 text-[11px] font-medium transition-colors min-h-[36px] shrink-0 whitespace-nowrap",
-                  linkedMember
-                    ? "bg-status-green-light border-status-green/30 text-status-green"
-                    : "bg-card border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-                )}
-              >
-                <User className="h-3.5 w-3.5 shrink-0" />
-                {linkedMember ? linkedMember.name.split(" ")[0] : "Member"}
-              </button>
               <ThemeToggle />
             </div>
 
@@ -643,6 +631,8 @@ const TabletPOS: React.FC = () => {
                     tier: linkedMember.tier,
                     discountPercent: getTierDiscount(`tier-${linkedMember.tier.toLowerCase()}`),
                   } : null}
+                  onMemberClick={() => setShowMemberDialog(true)}
+                  balanceCredit={balanceCredit}
                 />
               ) : (
                 <OrderHistory orders={paidOrders} onClose={() => setShowHistory(false)} />
@@ -665,8 +655,9 @@ const TabletPOS: React.FC = () => {
         open={showMemberDialog}
         onClose={() => setShowMemberDialog(false)}
         onMemberFound={(customer) => setLinkedMember(customer)}
-        onClearMember={() => setLinkedMember(null)}
+        onClearMember={() => { setLinkedMember(null); setBalanceCredit(0); }}
         currentMember={linkedMember}
+        onUseBalance={(amount) => setBalanceCredit(prev => prev + amount)}
       />
     </div>
   );
