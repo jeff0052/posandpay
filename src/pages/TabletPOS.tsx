@@ -589,17 +589,17 @@ const TabletPOS: React.FC = () => {
           {/* Right panel: check or history */}
           <div style={{ width: `${rightWidth * 100}%` }} className="shrink-0 flex flex-col">
             {/* Top controls bar — History button + ThemeToggle aligned */}
-            <div className="h-[52px] flex items-center justify-end gap-2 px-3 border-b border-border bg-card shrink-0">
+            <div className="h-[52px] flex items-center justify-end gap-1.5 px-2 border-b border-border bg-card shrink-0 overflow-hidden">
               <button
                 onClick={() => setShowHistory(h => !h)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-1.5 text-[11px] font-medium transition-colors min-h-[36px]",
+                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border-1.5 text-[11px] font-medium transition-colors min-h-[36px] shrink-0 whitespace-nowrap",
                   showHistory
                     ? "bg-primary text-primary-foreground border-primary"
                     : "bg-card border-border text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}
               >
-                <Receipt className="h-3.5 w-3.5" />
+                <Receipt className="h-3.5 w-3.5 shrink-0" />
                 {t("history")}
                 {paidOrders.length > 0 && (
                   <span className={cn(
@@ -614,13 +614,13 @@ const TabletPOS: React.FC = () => {
               <button
                 onClick={() => setShowMemberDialog(true)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-1.5 text-[11px] font-medium transition-colors min-h-[36px]",
+                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border-1.5 text-[11px] font-medium transition-colors min-h-[36px] shrink-0 whitespace-nowrap",
                   linkedMember
                     ? "bg-status-green-light border-status-green/30 text-status-green"
                     : "bg-card border-border text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}
               >
-                <User className="h-3.5 w-3.5" />
+                <User className="h-3.5 w-3.5 shrink-0" />
                 {linkedMember ? linkedMember.name.split(" ")[0] : "Member"}
               </button>
               <ThemeToggle />

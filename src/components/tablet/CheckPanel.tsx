@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Minus, Plus, Trash2, Users, UtensilsCrossed, Split, X, ChefHat, Ban, Crown } from "lucide-react";
+import { Minus, Plus, Trash2, Users, UtensilsCrossed, Split, X, ChefHat, Ban, Crown, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type Order, type Table } from "@/data/mock-data";
@@ -24,6 +24,8 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
   const [manualDiscount, setManualDiscount] = useState<{ type: "percentage" | "fixed"; value: number } | null>(null);
   const [splitCount, setSplitCount] = useState(1);
   const [showSplit, setShowSplit] = useState(false);
+  const [showPromo, setShowPromo] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
 
   if (!order) {
     return (
@@ -133,7 +135,7 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
           {/* Action bar */}
           <div className="flex items-center gap-1 px-3 py-2">
             <button
-              onClick={() => { setShowSplit(!showSplit); }}
+              onClick={() => { setShowSplit(!showSplit); setShowPromo(false); }}
               className={cn(
                 "flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors min-h-[36px]",
                 showSplit ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"
@@ -142,7 +144,95 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
               <Split className="h-3 w-3" />
               {t("split_bill")}
             </button>
+            <button
+              onClick={() => { setShowPromo(!showPromo); setShowSplit(false); }}
+              className={cn(
+                "flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors min-h-[36px]",
+                (showPromo || appliedPromo) ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"
+              )}
+            >
+              <Tag className="h-3 w-3" />
+              {t("promo")}
+            </button>
           </div>
+
+          {/* Promo panel */}
+          {showPromo && (
+            <div className="px-3 pb-2 space-y-2">
+              {/* Header with close */}
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-foreground">{t("promotions")}</span>
+                <button
+                  onClick={() => setShowPromo(false)}
+                  className="w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors active:scale-95"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {/* Promo code input */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={e => setPromoCode(e.target.value.toUpperCase())}
+                  placeholder={t("enter_promo_code")}
+                  className="flex-1 h-8 px-2.5 rounded-lg border border-border bg-background text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <button
+                  onClick={() => {
+                    if (promoCode === "NEWUSER") {
+                      setAppliedPromo({ type: "fixed", value: 5, label: "New Customer $5 Off" });
+                      setShowPromo(false);
+                      setPromoCode("");
+                    } else if (promoCode === "LUNCH20") {
+                      setAppliedPromo({ type: "percentage", value: 20, label: "Lunch Special 20% Off" });
+                      setShowPromo(false);
+                      setPromoCode("");
+                    }
+                  }}
+                  className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-[11px] font-semibold active:scale-95 transition-transform"
+                >
+                  {t("apply")}
+                </button>
+              </div>
+              {/* Quick promos */}
+              <div className="space-y-1">
+                {[
+                  { label: "Lunch Special 20% Off", type: "percentage" as const, value: 20 },
+                  { label: "New Customer $5 Off", type: "fixed" as const, value: 5 },
+                  { label: "Weekend BOGO Drinks", type: "percentage" as const, value: 50 },
+                ].map(p => (
+                  <button
+                    key={p.label}
+                    onClick={() => {
+                      setAppliedPromo({ type: p.type, value: p.value, label: p.label });
+                      setShowPromo(false);
+                    }}
+                    className={cn(
+                      "w-full flex items-center justify-between px-3 py-2 rounded-lg text-[11px] transition-colors active:scale-[0.98]",
+                      appliedPromo?.label === p.label
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "bg-accent text-foreground hover:bg-secondary"
+                    )}
+                  >
+                    <span>{p.label}</span>
+                    <span className="font-mono font-semibold">
+                      {p.type === "percentage" ? `${p.value}%` : `$${p.value}`}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              {/* Clear promo */}
+              {appliedPromo && (
+                <button
+                  onClick={() => { setAppliedPromo(null); }}
+                  className="w-full text-center text-[11px] text-destructive hover:underline py-1"
+                >
+                  {t("remove")} {appliedPromo.label}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Split bill */}
           {showSplit && (

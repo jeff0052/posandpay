@@ -68,7 +68,7 @@ export const MenuComposer: React.FC<MenuComposerProps> = ({ onAddItem, selectedT
   return (
     <div className="flex-1 flex flex-col bg-background min-w-0">
       {/* Header */}
-      <div className="h-[52px] px-5 border-b border-border bg-card flex items-center gap-4 shrink-0">
+      <div className="h-[52px] px-3 pr-2 border-b border-border bg-card flex items-center gap-3 shrink-0 min-w-0 overflow-hidden">
         <div className="flex-1">
           {selectedTable ? (
             <div className="flex items-center gap-2">
@@ -89,7 +89,7 @@ export const MenuComposer: React.FC<MenuComposerProps> = ({ onAddItem, selectedT
             <span className="text-muted-foreground text-[13px]">Select a table or create an order</span>
           )}
         </div>
-        <div className="relative w-56">
+        <div className="relative w-36 max-w-56 shrink min-w-[100px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <input
             type="text"
