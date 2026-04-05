@@ -1,10 +1,11 @@
-import React, { useState } from "react";
-import { Minus, Plus, Trash2, Users, User, UtensilsCrossed, Split, X, ChefHat, Ban, Crown, Tag } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Minus, Plus, Trash2, Users, User, UtensilsCrossed, Split, X, ChefHat, Ban, Crown, Tag, Timer, UtensilsCrossed as Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type Order, type Table } from "@/data/mock-data";
 import { type ServiceFlow } from "@/state/settings-store";
 import { useLanguage } from "@/hooks/useLanguage";
+import { buffetPlans, type BuffetPlan } from "@/state/buffet-store";
 
 interface CheckPanelProps {
   order: Order | null;
@@ -18,9 +19,10 @@ interface CheckPanelProps {
   linkedMember?: { name: string; tier: string; discountPercent: number } | null;
   onMemberClick?: () => void;
   balanceCredit?: number;
+  onStartBuffet?: (planId: string, pax: number) => void;
 }
 
-export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQuantity, onRemoveItem, onPay, serviceFlow = "restaurant", onSendToKitchen, onVoidOrder, linkedMember, onMemberClick, balanceCredit = 0 }) => {
+export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQuantity, onRemoveItem, onPay, serviceFlow = "restaurant", onSendToKitchen, onVoidOrder, linkedMember, onMemberClick, balanceCredit = 0, onStartBuffet }) => {
   const { t } = useLanguage();
   const [appliedPromo, setAppliedPromo] = useState<{ type: "percentage" | "fixed"; value: number; label: string } | null>(null);
   const [manualDiscount, setManualDiscount] = useState<{ type: "percentage" | "fixed"; value: number } | null>(null);
@@ -28,6 +30,27 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
   const [showSplit, setShowSplit] = useState(false);
   const [showPromo, setShowPromo] = useState(false);
   const [promoCode, setPromoCode] = useState("");
+  const [showBuffetSelect, setShowBuffetSelect] = useState(false);
+  const [buffetPax, setBuffetPax] = useState(order?.guestCount || 2);
+
+  // Buffet countdown timer
+  const [, setTick] = useState(0);
+  const isBuffet = !!order?.buffetPlanId;
+  const buffetPlan = isBuffet ? buffetPlans.find(p => p.id === order.buffetPlanId) : null;
+
+  useEffect(() => {
+    if (!isBuffet || !order?.buffetStartTime) return;
+    const interval = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, [isBuffet, order?.buffetStartTime]);
+
+  const getBuffetRemaining = () => {
+    if (!order?.buffetStartTime || !order?.buffetDuration) return null;
+    const elapsed = (Date.now() - new Date(order.buffetStartTime).getTime()) / 60000;
+    return Math.ceil(order.buffetDuration - elapsed);
+  };
+
+  const buffetRemaining = getBuffetRemaining();
 
   if (!order) {
     return (
@@ -55,7 +78,8 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
   };
 
   const discountAmt = Math.round(calcDiscount() * 100) / 100;
-  const adjustedSubtotal = Math.round((order.subtotal - discountAmt) * 100) / 100;
+  const buffetCost = (isBuffet && buffetPlan && order.buffetPax) ? buffetPlan.price * order.buffetPax : 0;
+  const adjustedSubtotal = Math.round((order.subtotal + buffetCost - discountAmt) * 100) / 100;
   const serviceCharge = Math.round(adjustedSubtotal * 0.1 * 100) / 100;
   const gst = Math.round((adjustedSubtotal + serviceCharge) * 0.09 * 100) / 100;
   const totalBeforeCredit = Math.round((adjustedSubtotal + serviceCharge + gst) * 100) / 100;
@@ -72,11 +96,27 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
             <h3 className="font-semibold text-foreground text-[13px]">
               {table ? `${t("tables")} ${table.number}` : `${order.serviceMode}`}
             </h3>
-            <span className="text-[11px] text-muted-foreground capitalize">{order.serviceMode}</span>
+            <span className="text-[11px] text-muted-foreground capitalize">
+              {isBuffet ? buffetPlan?.name : order.serviceMode}
+            </span>
           </div>
-          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Users className="h-3.5 w-3.5" />
-            {order.guestCount}
+          <div className="flex items-center gap-2">
+            {/* Buffet countdown */}
+            {isBuffet && buffetRemaining !== null && (
+              <div className={cn(
+                "flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold",
+                buffetRemaining > 15 ? "bg-status-green-light text-status-green"
+                  : buffetRemaining > 0 ? "bg-status-amber-light text-status-amber"
+                  : "bg-status-red-light text-status-red animate-pulse"
+              )}>
+                <Timer className="h-3 w-3" />
+                {buffetRemaining > 0 ? `${buffetRemaining}m` : t("overtime")}
+              </div>
+            )}
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Users className="h-3.5 w-3.5" />
+              {order.guestCount}
+            </div>
           </div>
         </div>
       </div>
@@ -288,8 +328,15 @@ export const CheckPanel: React.FC<CheckPanelProps> = ({ order, table, onUpdateQu
             <span className="text-[10px] opacity-70">{linkedMember.tier} · {linkedMember.discountPercent}% off</span>
           </div>
         )}
+        {isBuffet && buffetPlan && order.buffetPax && (
+          <div className="flex justify-between text-[13px] text-foreground font-medium">
+            <span>{buffetPlan.name} x{order.buffetPax}</span>
+            <span className="font-mono">${(buffetPlan.price * order.buffetPax).toFixed(2)}</span>
+          </div>
+        )}
+        {/* A la carte subtotal (surcharges + regular items) */}
         <div className="flex justify-between text-[13px] text-muted-foreground">
-          <span>{t("subtotal")}</span>
+          <span>{isBuffet && order.subtotal > 0 ? t("extras") : t("subtotal")}</span>
           <span className="font-mono">${order.subtotal.toFixed(2)}</span>
         </div>
         {discountAmt > 0 && (

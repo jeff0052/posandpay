@@ -7,6 +7,7 @@ import { PaymentSheet } from "@/components/tablet/PaymentSheet";
 import { OrderHistory } from "@/components/tablet/OrderHistory";
 import type { PaidOrder } from "@/components/tablet/history/types";
 import { tables as mockTables, sampleOrders, reservations as mockReservations, type Table, type Order, type OrderItem, type ServiceMode, type Reservation, type CancelReason } from "@/data/mock-data";
+import { buffetPlans } from "@/state/buffet-store";
 import { MemberIdentifyDialog } from "@/components/tablet/MemberIdentifyDialog";
 import { type CustomerFull } from "@/state/customer-store";
 import { getTierDiscount } from "@/state/membership-store";
@@ -521,6 +522,84 @@ const TabletPOS: React.FC = () => {
     });
   }, []);
 
+  // Buffet handlers
+  const handleStartBuffet = useCallback((planId: string, pax: number) => {
+    let order = currentOrder;
+
+    // Auto-create order if none exists
+    if (!order && selectedTableId) {
+      const table = tables.find(t => t.id === selectedTableId);
+      if (!table) return;
+      order = {
+        id: `o-${Date.now()}`,
+        tableId: selectedTableId,
+        tableNumber: table.number,
+        serviceMode: "dine-in",
+        items: [],
+        status: "open",
+        guestCount: pax,
+        createdAt: new Date().toISOString(),
+        subtotal: 0, serviceCharge: 0, gst: 0, total: 0,
+      };
+      setOrders(prev => [...prev, order!]);
+      setTables(prev => prev.map(t =>
+        t.id === selectedTableId ? { ...t, status: "ordering" as const, guestCount: pax, orderId: order!.id, elapsedMinutes: 0 } : t
+      ));
+    }
+
+    if (!order) return;
+
+    const updatedOrder = {
+      ...order,
+      buffetPlanId: planId,
+      buffetStartTime: new Date().toISOString(),
+      buffetPax: pax,
+      buffetDuration: buffetPlans.find(p => p.id === planId)?.duration || 90,
+      guestCount: pax,
+    };
+    setCurrentOrder(updatedOrder);
+    setOrders(prev => {
+      const exists = prev.some(o => o.id === updatedOrder.id);
+      return exists ? prev.map(o => o.id === updatedOrder.id ? updatedOrder : o) : [...prev, updatedOrder];
+    });
+  }, [currentOrder, selectedTableId, tables]);
+
+  const handleAddBuffetItem = useCallback((buffetItemId: string, surcharge: number, name: string) => {
+    if (!currentOrder) return;
+    const newItem: OrderItem = {
+      id: `oi-${Date.now()}`,
+      menuItemId: buffetItemId,
+      name,
+      price: surcharge, // 0 for included, >0 for surcharge
+      quantity: 1,
+      modifiers: [],
+      status: "new",
+    };
+    const existingIndex = currentOrder.items.findIndex(i => i.menuItemId === buffetItemId);
+    let updatedItems: OrderItem[];
+    if (existingIndex >= 0) {
+      updatedItems = currentOrder.items.map((item, i) =>
+        i === existingIndex ? { ...item, quantity: item.quantity + 1 } : item
+      );
+    } else {
+      updatedItems = [...currentOrder.items, newItem];
+    }
+    const totals = recalcOrder(updatedItems);
+    const updatedOrder = { ...currentOrder, items: updatedItems, ...totals };
+    setCurrentOrder(updatedOrder);
+    setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+  }, [currentOrder]);
+
+  // Compute buffet overtime tables
+  const buffetOvertimeTableIds = orders
+    .filter(o => o.buffetStartTime && o.buffetDuration && o.tableId)
+    .filter(o => {
+      const elapsed = (Date.now() - new Date(o.buffetStartTime!).getTime()) / 60000;
+      return elapsed > o.buffetDuration!;
+    })
+    .map(o => o.tableId!)
+    .filter(Boolean);
+
   const showCheckPanel = !showHistory;
 
   return (
@@ -543,6 +622,7 @@ const TabletPOS: React.FC = () => {
               onReserveTable={handleReserveTable}
               onCancelReservation={handleCancelReservation}
               reservations={reservations}
+              buffetOvertimeTableIds={buffetOvertimeTableIds}
             />
           </div>
           {/* Left drag handle */}
@@ -569,6 +649,7 @@ const TabletPOS: React.FC = () => {
           onReserveTable={handleReserveTable}
           onCancelReservation={handleCancelReservation}
           reservations={reservations}
+          buffetOvertimeTableIds={buffetOvertimeTableIds}
         />
       )}
 
@@ -576,6 +657,8 @@ const TabletPOS: React.FC = () => {
         <>
           <MenuComposer
             onAddItem={handleAddItem}
+            onAddBuffetItem={handleAddBuffetItem}
+            onStartBuffet={handleStartBuffet}
             selectedTable={selectedTable}
             currentOrder={currentOrder}
           />
@@ -633,6 +716,7 @@ const TabletPOS: React.FC = () => {
                   } : null}
                   onMemberClick={() => setShowMemberDialog(true)}
                   balanceCredit={balanceCredit}
+                  onStartBuffet={handleStartBuffet}
                 />
               ) : (
                 <OrderHistory orders={paidOrders} onClose={() => setShowHistory(false)} />

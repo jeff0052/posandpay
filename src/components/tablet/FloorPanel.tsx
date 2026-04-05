@@ -26,6 +26,7 @@ interface FloorPanelProps {
   onReserveTable?: (tableId: string, data: { guestName: string; guestCount: number; phone?: string; reservationTime?: string; notes?: string }) => void;
   onCancelReservation?: (tableId: string, reason: CancelReason, note?: string) => void;
   reservations?: Reservation[];
+  buffetOvertimeTableIds?: string[];
 }
 
 const statusConfig: Record<TableStatus, { dot: string; border: string; bg: string; labelKey: string; badgeBg: string; badgeText: string }> = {
@@ -44,6 +45,7 @@ export const FloorPanel: React.FC<FloorPanelProps> = ({
   onTransferTable, onMergeTables, onSplitTable,
   isFullscreen, onToggleFullscreen,
   onSeatReserved, onReserveTable, onCancelReservation, reservations,
+  buffetOvertimeTableIds = [],
 }) => {
   const { t } = useLanguage();
   const [activeZone, setActiveZone] = useState<string>("All");
@@ -256,7 +258,10 @@ export const FloorPanel: React.FC<FloorPanelProps> = ({
               isFullscreen ? "grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8" : "grid-cols-2"
             )}>
               {filteredTables.map(table => {
-                const cfg = statusConfig[table.status];
+                const isBuffetOvertime = buffetOvertimeTableIds.includes(table.id);
+                const cfg = isBuffetOvertime
+                  ? { ...statusConfig[table.status], dot: "bg-status-red", border: "border-status-red/30" }
+                  : statusConfig[table.status];
                 const isSelected = selectedTableId === table.id;
                 const isMergeTarget = mergeTargets.includes(table.id);
                 return (

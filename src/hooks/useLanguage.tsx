@@ -202,6 +202,12 @@ const dict: Record<Lang, Record<string, string>> = {
     added_to_balance: "added to balance",
     use_balance_now: "Use Balance Now",
     all: "All",
+    // Buffet
+    select_buffet: "Select Buffet Plan",
+    pax: "Pax",
+    included: "Included",
+    extras: "Extras",
+    overtime: "OVERTIME",
     // Kiosk & QR
     kiosk: "Kiosk",
     qr_order: "QR Order",
@@ -505,6 +511,12 @@ const dict: Record<Lang, Record<string, string>> = {
     added_to_balance: "已添加到余额",
     use_balance_now: "立即使用余额",
     all: "全部",
+    // Buffet
+    select_buffet: "选择自助餐套餐",
+    pax: "人数",
+    included: "已包含",
+    extras: "额外加点",
+    overtime: "已超时",
     // Kiosk & QR
     kiosk: "自助点餐",
     qr_order: "扫码点餐",

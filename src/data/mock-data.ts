@@ -93,6 +93,11 @@ export interface Order {
   gst: number;
   total: number;
   customerId?: string;
+  // Buffet
+  buffetPlanId?: string;
+  buffetStartTime?: string;
+  buffetPax?: number;
+  buffetDuration?: number;
 }
 
 export interface Customer {
